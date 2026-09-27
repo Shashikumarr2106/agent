@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dataflix — AI Data Analyst</title>
+  <link rel="icon" type="image/jpeg" href="/static/mascot.jpg">
   
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -368,7 +369,8 @@ North,Data Warehouse,140000,39000,13,2026-02-28`;
               
               {/* Brand & New Chat */}
               <div class="flex items-center justify-between px-2 pt-2 pb-3">
-                <div class="flex items-center gap-2 cursor-pointer" onClick={startNewChat}>
+                <div class="flex items-center gap-2.5 cursor-pointer" onClick={startNewChat}>
+                  <img src="/static/mascot.jpg" alt="Logo" class="w-8 h-8 rounded-lg object-cover border border-netflixRed shadow-md" />
                   <span class="text-netflixRed font-netflix text-2xl tracking-wider">DATAFLIX</span>
                   <span class="text-[10px] font-bold tracking-widest text-netflixTextMuted uppercase border-l border-netflixBorder pl-1.5">AI</span>
                 </div>
@@ -478,8 +480,9 @@ North,Data Warehouse,140000,39000,13,2026-02-28`;
                 {/* EMPTY STATE / CHATGPT WELCOME HERO (Netflix-styled) */}
                 {messages.length === 0 && (
                   <div class="py-12 flex flex-col items-center text-center animate-fade-in">
-                    <div class="w-14 h-14 rounded-2xl bg-netflixRed flex items-center justify-center font-netflix text-3xl text-white shadow-2xl mb-4">
-                      DF
+                    <div class="relative mb-4 group cursor-pointer" onClick={startNewChat}>
+                      <div class="absolute -inset-1 rounded-2xl bg-netflixRed/30 blur-lg group-hover:bg-netflixRed/60 transition-all"></div>
+                      <img src="/static/mascot.jpg" alt="Dataflix Mascot" class="w-20 h-20 rounded-2xl object-cover border-2 border-netflixRed shadow-2xl relative z-10 hover:scale-105 transition-transform" />
                     </div>
                     <h1 class="text-2xl md:text-3xl font-bold text-white tracking-tight mb-2">
                       What would you like to analyze today?
@@ -550,9 +553,7 @@ North,Data Warehouse,140000,39000,13,2026-02-28`;
                 {/* Loading indicator (ChatGPT style pulse) */}
                 {isLoading && (
                   <div class="flex items-start gap-4">
-                    <div class="w-8 h-8 rounded-lg bg-netflixRed text-white flex items-center justify-center font-netflix text-sm flex-shrink-0 shadow-md">
-                      DF
-                    </div>
+                    <img src="/static/mascot.jpg" alt="Agent Mascot" class="w-8 h-8 rounded-lg object-cover border border-netflixRed flex-shrink-0 shadow-md animate-pulse" />
                     <div class="flex items-center gap-2 text-xs text-netflixTextMuted bg-netflixCard border border-netflixBorder px-4 py-3 rounded-2xl rounded-tl-sm animate-pulse">
                       <span class="w-2 h-2 rounded-full bg-netflixRed animate-ping"></span>
                       <span>Calculating deterministic metrics via Analysis SDK...</span>
@@ -726,9 +727,7 @@ North,Data Warehouse,140000,39000,13,2026-02-28`;
       // AGENT MESSAGE (ChatGPT style clean assistant block)
       return (
         <div class="flex items-start gap-3.5">
-          <div class="w-8 h-8 rounded-lg bg-netflixRed text-white flex items-center justify-center font-netflix text-base flex-shrink-0 shadow-md">
-            DF
-          </div>
+          <img src="/static/mascot.jpg" alt="Agent Mascot" class="w-8 h-8 rounded-lg object-cover border border-netflixRed flex-shrink-0 shadow-md" />
           <div class="flex-1 bg-netflixCard border border-netflixBorder rounded-2xl rounded-tl-sm p-5 shadow-lg space-y-3">
             
             <div class="space-y-1">
