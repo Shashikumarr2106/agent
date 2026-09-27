@@ -161,4 +161,71 @@ class DatabaseService:
         except Exception as e:
             return [], f"SQL execution failed: {str(e)}"
 
+    def list_jobs(self, session_id: Optional[str] = None, status: Optional[str] = None, limit: int = 50) -> List[Dict[str, Any]]:
+        """List historical analysis jobs with optional filtering."""
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        query = "SELECT job_id, session_id, dataset_id, question, status, skill_id, skill_version, created_at, completed_at FROM analysis_jobs"
+        conditions = []
+        params = []
+        if session_id:
+            conditions.append("session_id = ?")
+            params.append(session_id)
+        if status:
+            conditions.append("status = ?")
+            params.append(status)
+        if conditions:
+            query += " WHERE " + " AND ".join(conditions)
+        query += f" ORDER BY created_at DESC LIMIT {max(1, min(limit, 200))}"
+        cursor.execute(query, tuple(params))
+        rows = cursor.fetchall()
+        conn.close()
+        return [dict(r) for r in rows]
+
+    def list_sessions(self, user_id: str = "default_user") -> List[Dict[str, Any]]:
+        """List all user sessions with job count and dataset details."""
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT s.session_id, s.user_id, s.active_dataset_id, s.created_at, s.updated_at,
+                   d.filename as active_dataset_name,
+                   (SELECT COUNT(*) FROM analysis_jobs WHERE session_id = s.session_id) as job_count
+            FROM sessions s
+            LEFT JOIN datasets d ON s.active_dataset_id = d.dataset_id
+            WHERE s.user_id = ?
+            ORDER BY s.updated_at DESC
+        """, (user_id,))
+        rows = cursor.fetchall()
+        conn.close()
+        return [dict(r) for r in rows]
+
+    def delete_session(self, session_id: str) -> bool:
+        """Delete session and associated jobs and logs."""
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        try:
+            cursor.execute("DELETE FROM execution_logs WHERE job_id IN (SELECT job_id FROM analysis_jobs WHERE session_id = ?)", (session_id,))
+            cursor.execute("DELETE FROM analysis_jobs WHERE session_id = ?", (session_id,))
+            cursor.execute("DELETE FROM sessions WHERE session_id = ?", (session_id,))
+            conn.commit()
+            return cursor.rowcount > 0
+        finally:
+            conn.close()
+
+    def get_system_stats(self) -> Dict[str, Any]:
+        """Aggregate system-wide dataset, skill, job, and session metrics."""
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        datasets_count = cursor.execute("SELECT COUNT(*) FROM datasets").fetchone()[0]
+        skills_count = cursor.execute("SELECT COUNT(*) FROM skills WHERE status = 'active'").fetchone()[0]
+        jobs_count = cursor.execute("SELECT COUNT(*) FROM analysis_jobs").fetchone()[0]
+        sessions_count = cursor.execute("SELECT COUNT(*) FROM sessions").fetchone()[0]
+        conn.close()
+        return {
+            "total_datasets": datasets_count,
+            "total_jobs": jobs_count,
+            "total_skills": skills_count,
+            "total_sessions": sessions_count
+        }
+
 db_service = DatabaseService()

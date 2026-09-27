@@ -50,8 +50,9 @@ def skill_resolution_node(state: AnalysisState) -> AnalysisState:
         # Match columns mentioned in question
         mentioned_num = [c for c in num_cols if c.lower() in question.lower()]
         target_num = mentioned_num if mentioned_num else num_cols[:2]
-
-        concept_label = " ".join(q_words).title() if q_words else "Dynamic Analysis"
+        stopwords = {"for", "the", "and", "with", "from", "between", "calculate", "compute", "find", "get", "show", "what", "which", "how", "across", "over", "into", "each", "per"}
+        clean_words = [w for w in q_words if w.lower() not in stopwords]
+        concept_label = " ".join(clean_words).title() if clean_words else "Dynamic Analysis"
 
         generated_method = {
             "skill_id": new_skill_id,

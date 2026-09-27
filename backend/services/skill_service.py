@@ -112,6 +112,45 @@ class SkillService:
             status=s_row["status"]
         )
 
+    def list_skills(self) -> List[Dict[str, Any]]:
+        """List all active skills and their latest version info."""
+        conn = db_service._get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT s.skill_id, s.name, s.description, s.current_version, s.status, s.created_at, s.updated_at,
+                   sv.formula, sv.logic, sv.required_inputs
+            FROM skills s
+            LEFT JOIN skill_versions sv ON s.skill_id = sv.skill_id AND s.current_version = sv.version
+            ORDER BY s.created_at DESC
+        """)
+        rows = cursor.fetchall()
+        conn.close()
+        results = []
+        for r in rows:
+            results.append({
+                "skill_id": r["skill_id"],
+                "name": r["name"],
+                "description": r["description"],
+                "current_version": r["current_version"],
+                "status": r["status"],
+                "formula": r["formula"],
+                "logic": r["logic"],
+                "required_inputs": json.loads(r["required_inputs"]) if r["required_inputs"] else [],
+                "created_at": r["created_at"],
+                "updated_at": r["updated_at"]
+            })
+        return results
+
+    def delete_skill(self, skill_id: str) -> bool:
+        """Deactivate or remove a skill from library."""
+        conn = db_service._get_connection()
+        cursor = conn.cursor()
+        cursor.execute("UPDATE skills SET status = 'deprecated', updated_at = CURRENT_TIMESTAMP WHERE skill_id = ?", (skill_id,))
+        affected = cursor.rowcount > 0
+        conn.commit()
+        conn.close()
+        return affected
+
     def get_skill_version(self, skill_id: str, version: int) -> Optional[SkillVersion]:
         conn = db_service._get_connection()
         cursor = conn.cursor()

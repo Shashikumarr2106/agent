@@ -240,4 +240,79 @@ class IngestionService:
             return DatasetSchema.model_validate_json(row["schema_json"])
         return None
 
+    def get_dataset_preview(self, dataset_id: str, limit: int = 50, offset: int = 0) -> Dict[str, Any]:
+        """Fetch paginated preview rows and total count for a dataset."""
+        schema = self.get_dataset(dataset_id)
+        if not schema:
+            return {"error": f"Dataset '{dataset_id}' not found"}
+
+        limit = max(1, min(limit, 500))
+        offset = max(0, offset)
+        sql = f'SELECT * FROM "{schema.table_name}" LIMIT {limit} OFFSET {offset}'
+        rows, cols = db_service.execute_dataset_sql(sql)
+
+        return {
+            "dataset_id": dataset_id,
+            "filename": schema.filename,
+            "total_rows": schema.row_count,
+            "limit": limit,
+            "offset": offset,
+            "columns": cols,
+            "rows": rows
+        }
+
+    def get_dataset_summary(self, dataset_id: str) -> Dict[str, Any]:
+        """Compute descriptive summary statistics across all numeric columns via Analysis SDK."""
+        from ..sdk import sdk
+
+        schema = self.get_dataset(dataset_id)
+        if not schema:
+            return {"error": f"Dataset '{dataset_id}' not found"}
+
+        if not schema.numeric_columns:
+            return {
+                "dataset_id": dataset_id,
+                "filename": schema.filename,
+                "summaries": {},
+                "message": "No numeric columns found in dataset."
+            }
+
+        # Query all rows for numeric columns
+        cols_sql = ", ".join([f'"{col}"' for col in schema.numeric_columns])
+        sql = f'SELECT {cols_sql} FROM "{schema.table_name}"'
+        rows, _ = db_service.execute_dataset_sql(sql)
+
+        summaries = {}
+        for col in schema.numeric_columns:
+            try:
+                res = sdk.run("summary_statistics", rows, column=col)
+                if res.status == "success":
+                    summaries[col] = res.value
+            except Exception as e:
+                summaries[col] = {"error": str(e)}
+
+        return {
+            "dataset_id": dataset_id,
+            "filename": schema.filename,
+            "row_count": schema.row_count,
+            "numeric_columns": schema.numeric_columns,
+            "summaries": summaries
+        }
+
+    def delete_dataset(self, dataset_id: str) -> Dict[str, Any]:
+        """Safely drop dataset table and delete its metadata records."""
+        schema = self.get_dataset(dataset_id)
+        if not schema:
+            return {"error": f"Dataset '{dataset_id}' not found"}
+
+        conn = db_service._get_connection()
+        cursor = conn.cursor()
+        try:
+            cursor.execute(f'DROP TABLE IF EXISTS "{schema.table_name}"')
+            cursor.execute("DELETE FROM datasets WHERE dataset_id = ?", (dataset_id,))
+            conn.commit()
+            return {"success": True, "message": f"Dataset '{schema.filename}' deleted successfully."}
+        finally:
+            conn.close()
+
 ingestion_service = IngestionService()

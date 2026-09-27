@@ -1,4 +1,4 @@
-"""Main application entry point configuring FastAPI, MCP, and HTTP routing."""
+"""Main application entry point configuring FastAPI, MCP, and modular HTTP routing."""
 import os
 import sys
 import json
@@ -17,15 +17,36 @@ try:
     from .services.skill_service import skill_service
     from .mcp import mcp_server
     from .api import (
+        datasets_router,
+        chat_router,
+        analysis_router,
+        skills_router,
+        jobs_router,
+        sessions_router,
+        system_router,
         handle_upload_csv,
         handle_get_dataset,
         handle_list_datasets,
+        handle_preview_dataset,
+        handle_summary_dataset,
+        handle_delete_dataset,
         handle_chat_request,
         handle_approve_analysis,
         handle_reject_analysis,
-        handle_get_job,
         handle_feedback,
+        handle_direct_execute,
+        handle_get_job,
+        handle_list_jobs,
+        handle_get_job_logs,
+        handle_list_skills,
+        handle_get_skill,
+        handle_search_skills,
+        handle_list_sessions,
         handle_get_session,
+        handle_create_session,
+        handle_delete_session,
+        handle_health_check,
+        handle_system_stats,
     )
 except (ImportError, ValueError):
     from backend.core.config import settings
@@ -33,20 +54,41 @@ except (ImportError, ValueError):
     from backend.services.skill_service import skill_service
     from backend.mcp import mcp_server
     from backend.api import (
+        datasets_router,
+        chat_router,
+        analysis_router,
+        skills_router,
+        jobs_router,
+        sessions_router,
+        system_router,
         handle_upload_csv,
         handle_get_dataset,
         handle_list_datasets,
+        handle_preview_dataset,
+        handle_summary_dataset,
+        handle_delete_dataset,
         handle_chat_request,
         handle_approve_analysis,
         handle_reject_analysis,
-        handle_get_job,
         handle_feedback,
+        handle_direct_execute,
+        handle_get_job,
+        handle_list_jobs,
+        handle_get_job_logs,
+        handle_list_skills,
+        handle_get_skill,
+        handle_search_skills,
+        handle_list_sessions,
         handle_get_session,
+        handle_create_session,
+        handle_delete_session,
+        handle_health_check,
+        handle_system_stats,
     )
 
 # Detect if FastAPI is available
 try:
-    from fastapi import FastAPI, File, UploadFile, Form, HTTPException, Body
+    from fastapi import FastAPI, APIRouter
     from fastapi.middleware.cors import CORSMiddleware
     from fastapi.staticfiles import StaticFiles
     from fastapi.responses import HTMLResponse, JSONResponse
@@ -56,11 +98,14 @@ except ImportError:
 
 if HAS_FASTAPI:
     app = FastAPI(
-        title="AI Data Analyst Agent",
-        description="FastAPI + LangGraph + MCP + pgvector + Analysis SDK",
-        version="1.0.0"
+        title="AI Data Analyst Agent API",
+        description="Comprehensive REST API for AI Data Analyst Agent — FastAPI, LangGraph Orchestration, MCP Server, pgvector Skill Store, and Deterministic Analysis SDK.",
+        version="1.0.0",
+        docs_url="/docs",
+        redoc_url="/redoc"
     )
 
+    # Configure CORS
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],
@@ -69,73 +114,32 @@ if HAS_FASTAPI:
         allow_headers=["*"],
     )
 
-    @app.post("/datasets/upload")
-    async def upload_dataset(file: UploadFile = File(...)):
-        content = await file.read()
-        return handle_upload_csv(file.filename, content)
+    # 1. Mount root API routers (directly accessible at /datasets, /chat, /analysis, /skills, /jobs, /sessions, /health)
+    app.include_router(datasets_router)
+    app.include_router(chat_router)
+    app.include_router(analysis_router)
+    app.include_router(skills_router)
+    app.include_router(jobs_router)
+    app.include_router(sessions_router)
+    app.include_router(system_router)
 
-    @app.get("/datasets/{dataset_id}")
-    async def get_dataset(dataset_id: str):
-        res = handle_get_dataset(dataset_id)
-        if "error" in res:
-            raise HTTPException(status_code=404, detail=res["error"])
-        return res
+    # 2. Mount versioned API routers under /api/v1 prefix
+    api_v1 = APIRouter(prefix="/api/v1")
+    api_v1.include_router(datasets_router)
+    api_v1.include_router(chat_router)
+    api_v1.include_router(analysis_router)
+    api_v1.include_router(skills_router)
+    api_v1.include_router(jobs_router)
+    api_v1.include_router(sessions_router)
+    api_v1.include_router(system_router)
+    app.include_router(api_v1)
 
-    @app.get("/datasets")
-    async def list_datasets():
-        return handle_list_datasets()
-
-    @app.post("/chat")
-    async def chat(payload: dict = Body(...)):
-        dataset_id = payload.get("dataset_id")
-        if not dataset_id:
-            raise HTTPException(status_code=400, detail="dataset_id is required")
-        question = payload.get("question", "")
-        session_id = payload.get("session_id")
-        return handle_chat_request(dataset_id=dataset_id, question=question, session_id=session_id)
-
-    @app.post("/analysis/approve")
-    async def approve_analysis(payload: dict = Body(...)):
-        job_id = payload.get("job_id")
-        if not job_id:
-            raise HTTPException(status_code=400, detail="job_id is required")
-        return handle_approve_analysis(job_id)
-
-    @app.post("/analysis/reject")
-    async def reject_analysis(payload: dict = Body(...)):
-        job_id = payload.get("job_id")
-        if not job_id:
-            raise HTTPException(status_code=400, detail="job_id is required")
-        return handle_reject_analysis(job_id, payload.get("modification_instructions"))
-
-    @app.get("/jobs/{job_id}")
-    async def get_job(job_id: str):
-        res = handle_get_job(job_id)
-        if "error" in res:
-            raise HTTPException(status_code=404, detail=res["error"])
-        return res
-
-    @app.post("/analysis/feedback")
-    async def submit_feedback(payload: dict = Body(...)):
-        job_id = payload.get("job_id")
-        feedback = payload.get("feedback")
-        if not job_id or not feedback:
-            raise HTTPException(status_code=400, detail="job_id and feedback are required")
-        return handle_feedback(job_id, feedback)
-
-    @app.get("/sessions/{session_id}")
-    async def get_session(session_id: str):
-        res = handle_get_session(session_id)
-        if "error" in res:
-            raise HTTPException(status_code=404, detail=res["error"])
-        return res
-
-    # Serve static frontend if directory exists
+    # 3. Serve static frontend and root UI route
     frontend_dir = Path(__file__).resolve().parent.parent / "frontend"
     if frontend_dir.exists():
         app.mount("/static", StaticFiles(directory=str(frontend_dir)), name="static")
 
-        @app.api_route("/", methods=["GET", "HEAD"], response_class=HTMLResponse)
+        @app.api_route("/", methods=["GET", "HEAD"], response_class=HTMLResponse, include_in_schema=False)
         async def serve_index():
             index_path = frontend_dir / "index.html"
             if index_path.exists():
@@ -155,23 +159,25 @@ def run_standalone_server(port: int = 8000):
             self.send_response(status)
             self.send_header("Content-Type", "application/json")
             self.send_header("Access-Control-Allow-Origin", "*")
-            self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-            self.send_header("Access-Control-Allow-Headers", "Content-Type")
+            self.send_header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+            self.send_header("Access-Control-Allow-Headers", "Content-Type, X-Filename")
             self.end_headers()
             self.wfile.write(json.dumps(data, default=str).encode("utf-8"))
 
         def do_OPTIONS(self):
             self.send_response(200)
             self.send_header("Access-Control-Allow-Origin", "*")
-            self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-            self.send_header("Access-Control-Allow-Headers", "Content-Type")
+            self.send_header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+            self.send_header("Access-Control-Allow-Headers", "Content-Type, X-Filename")
             self.end_headers()
 
         def do_GET(self):
             parsed = urlparse(self.path)
             path = parsed.path
+            # Strip /api/v1 prefix if present
+            clean_path = path[7:] if path.startswith("/api/v1") else path
 
-            if path == "/" or path == "/index.html":
+            if clean_path in ("/", "/index.html"):
                 frontend_path = Path(__file__).resolve().parent.parent / "frontend" / "index.html"
                 if frontend_path.exists():
                     self.send_response(200)
@@ -182,39 +188,61 @@ def run_standalone_server(port: int = 8000):
                     self._send_json(200, {"message": "AI Data Analyst Agent API is active"})
                 return
 
-            if path.startswith("/static/"):
-                subpath = path[len("/static/"):]
+            if clean_path.startswith("/static/"):
+                subpath = clean_path[len("/static/"):]
                 fpath = Path(__file__).resolve().parent.parent / "frontend" / subpath
                 if fpath.exists():
-                    content_type = "text/javascript" if fpath.suffix == ".js" else "text/css" if fpath.suffix == ".css" else "text/plain"
+                    ext = fpath.suffix.lower()
+                    content_type = "image/jpeg" if ext in (".jpg", ".jpeg") else "image/png" if ext == ".png" else "text/javascript" if ext == ".js" else "text/css" if ext == ".css" else "text/plain"
                     self.send_response(200)
                     self.send_header("Content-Type", content_type)
                     self.end_headers()
                     self.wfile.write(fpath.read_bytes())
                     return
 
-            if path == "/datasets":
+            if clean_path in ("/health",):
+                self._send_json(200, handle_health_check())
+            elif clean_path in ("/stats",):
+                self._send_json(200, handle_system_stats())
+            elif clean_path in ("/datasets", "/datasets/"):
                 self._send_json(200, handle_list_datasets())
-            elif path.startswith("/datasets/"):
-                ds_id = path.split("/")[2]
+            elif clean_path.startswith("/datasets/") and clean_path.endswith("/preview"):
+                ds_id = clean_path.split("/")[2]
+                self._send_json(200, handle_preview_dataset(ds_id))
+            elif clean_path.startswith("/datasets/") and clean_path.endswith("/summary"):
+                ds_id = clean_path.split("/")[2]
+                self._send_json(200, handle_summary_dataset(ds_id))
+            elif clean_path.startswith("/datasets/"):
+                ds_id = clean_path.split("/")[2]
                 self._send_json(200, handle_get_dataset(ds_id))
-            elif path.startswith("/jobs/"):
-                job_id = path.split("/")[2]
+            elif clean_path in ("/skills", "/skills/"):
+                self._send_json(200, handle_list_skills())
+            elif clean_path.startswith("/skills/"):
+                sk_id = clean_path.split("/")[2]
+                self._send_json(200, handle_get_skill(sk_id))
+            elif clean_path in ("/jobs", "/jobs/"):
+                self._send_json(200, handle_list_jobs())
+            elif clean_path.startswith("/jobs/") and clean_path.endswith("/logs"):
+                job_id = clean_path.split("/")[2]
+                self._send_json(200, handle_get_job_logs(job_id))
+            elif clean_path.startswith("/jobs/"):
+                job_id = clean_path.split("/")[2]
                 self._send_json(200, handle_get_job(job_id))
-            elif path.startswith("/sessions/"):
-                session_id = path.split("/")[2]
+            elif clean_path in ("/sessions", "/sessions/"):
+                self._send_json(200, handle_list_sessions())
+            elif clean_path.startswith("/sessions/"):
+                session_id = clean_path.split("/")[2]
                 self._send_json(200, handle_get_session(session_id))
             else:
                 self._send_json(404, {"error": "Not Found"})
 
         def do_POST(self):
             parsed = urlparse(self.path)
-            path = parsed.path
+            clean_path = parsed.path[7:] if parsed.path.startswith("/api/v1") else parsed.path
             content_length = int(self.headers.get("Content-Length", 0))
             body = self.rfile.read(content_length)
 
-            if path == "/datasets/upload":
-                # Handle raw CSV or multipart payload
+            if clean_path == "/datasets/upload":
                 filename = self.headers.get("X-Filename", "dataset.csv")
                 res = handle_upload_csv(filename, body)
                 self._send_json(200, res)
@@ -224,24 +252,45 @@ def run_standalone_server(port: int = 8000):
                 except Exception:
                     payload = {}
 
-                if path == "/chat":
+                if clean_path == "/chat":
                     res = handle_chat_request(
                         dataset_id=payload.get("dataset_id"),
                         question=payload.get("question", ""),
                         session_id=payload.get("session_id")
                     )
                     self._send_json(200, res)
-                elif path == "/analysis/approve":
+                elif clean_path == "/analysis/approve":
                     res = handle_approve_analysis(payload.get("job_id"))
                     self._send_json(200, res)
-                elif path == "/analysis/reject":
+                elif clean_path == "/analysis/reject":
                     res = handle_reject_analysis(payload.get("job_id"), payload.get("modification_instructions"))
                     self._send_json(200, res)
-                elif path == "/analysis/feedback":
+                elif clean_path == "/analysis/feedback":
                     res = handle_feedback(payload.get("job_id"), payload.get("feedback"))
+                    self._send_json(200, res)
+                elif clean_path == "/analysis/direct-execute":
+                    res = handle_direct_execute(payload.get("dataset_id"), payload.get("method"), payload.get("params", {}))
+                    self._send_json(200, res)
+                elif clean_path == "/skills/search":
+                    res = handle_search_skills(payload.get("query", ""), threshold=payload.get("threshold", 0.5), top_k=payload.get("top_k", 5))
+                    self._send_json(200, res)
+                elif clean_path in ("/sessions", "/sessions/"):
+                    res = handle_create_session(user_id=payload.get("user_id", "default_user"), active_dataset_id=payload.get("active_dataset_id"))
                     self._send_json(200, res)
                 else:
                     self._send_json(404, {"error": "Endpoint Not Found"})
+
+        def do_DELETE(self):
+            parsed = urlparse(self.path)
+            clean_path = parsed.path[7:] if parsed.path.startswith("/api/v1") else parsed.path
+            if clean_path.startswith("/datasets/"):
+                ds_id = clean_path.split("/")[2]
+                self._send_json(200, handle_delete_dataset(ds_id))
+            elif clean_path.startswith("/sessions/"):
+                session_id = clean_path.split("/")[2]
+                self._send_json(200, handle_delete_session(session_id))
+            else:
+                self._send_json(404, {"error": "Endpoint Not Found"})
 
     server = HTTPServer(("0.0.0.0", port), AgentHTTPHandler)
     print(f"🚀 AI Data Analyst Agent running at http://localhost:{port}", flush=True)
