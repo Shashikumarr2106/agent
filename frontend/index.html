@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DATAFLIX ANALYST — AI Data Intelligence</title>
+  <title>Dataflix — AI Data Analyst</title>
   
-  <!-- Google Fonts: Inter & Bebas Neue for Netflix Title Feel -->
+  <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -20,11 +20,12 @@
             netflixRed: '#E50914',
             netflixRedHover: '#B81D24',
             netflixBlack: '#141414',
-            netflixDark: '#0b0b0b',
-            netflixCard: '#1f1f1f',
+            netflixSidebar: '#171717',
+            netflixDark: '#0f0f0f',
+            netflixCard: '#212121',
             netflixCardHover: '#2a2a2a',
-            netflixBorder: '#2e2e2e',
-            netflixTextMuted: '#999999',
+            netflixBorder: '#2f2f2f',
+            netflixTextMuted: '#9e9e9e',
             netflixCyan: '#00F0FF',
             netflixGreen: '#46d369'
           },
@@ -46,36 +47,26 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
   <style>
-    /* Custom Scrollbar */
     ::-webkit-scrollbar { width: 6px; height: 6px; }
-    ::-webkit-scrollbar-track { background: #141414; }
+    ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: #333333; border-radius: 3px; }
     ::-webkit-scrollbar-thumb:hover { background: #E50914; }
 
-    /* Netflix glowing effects */
-    .glow-red {
-      box-shadow: 0 0 15px rgba(229, 9, 20, 0.35);
-    }
     .glow-red-hover:hover {
-      box-shadow: 0 0 20px rgba(229, 9, 20, 0.5);
+      box-shadow: 0 0 16px rgba(229, 9, 20, 0.35);
       border-color: #E50914;
     }
-    .glow-cyan {
-      box-shadow: 0 0 15px rgba(0, 240, 255, 0.3);
-    }
-    .carousel-container {
+    .chat-container {
       scroll-behavior: smooth;
     }
   </style>
 </head>
-<body class="bg-netflixBlack text-white antialiased h-screen flex flex-col overflow-hidden font-sans selection:bg-netflixRed selection:text-white">
-  <div id="root" class="h-full w-full"></div>
+<body class="bg-netflixBlack text-white antialiased h-screen flex overflow-hidden font-sans selection:bg-netflixRed selection:text-white">
+  <div id="root" class="h-full w-full flex"></div>
 
-  <!-- React App Code -->
   <script type="text/babel">
     const { useState, useEffect, useRef } = React;
 
-    // Default Pre-loaded Sample Dataset if user has not uploaded one
     const DEFAULT_DATASET = {
       dataset_id: "ds_sample_sales",
       filename: "sales.csv (10M rows)",
@@ -87,73 +78,49 @@
       datetime_columns: ["date"]
     };
 
-    const RECOMMENDED_CAROUSEL = [
+    const QUICK_PROMPTS = [
       {
-        id: "corr",
         title: "Sales vs Profit Correlation",
-        desc: "Examine statistical association and Pearson r coefficient",
+        subtitle: "Compute Pearson r and statistical relationship",
         query: "Find correlation between sales and profit",
-        icon: "📈",
-        tag: "CORRELATION"
+        icon: "📈"
       },
       {
-        id: "margin",
-        title: "Regional Profit Margin",
-        desc: "Aggregate average revenue & profit grouped across regions",
+        title: "Regional Performance Breakdown",
+        subtitle: "Compare average revenue and margins by region",
         query: "Which region has the highest average profit?",
-        icon: "🌍",
-        tag: "AGGREGATION"
+        icon: "🌍"
       },
       {
-        id: "trend",
-        title: "Q4 Growth Trend",
-        desc: "Temporal time-series trajectory and growth rate over periods",
+        title: "Q4 Time Series Trend",
+        subtitle: "Track monthly growth trajectory and trends",
         query: "Analyze monthly sales trend over time",
-        icon: "⚡",
-        tag: "TIME SERIES"
+        icon: "⚡"
       },
       {
-        id: "cv",
         title: "Profit Volatility (CV)",
-        desc: "Measure relative dispersion: CV = std / mean * 100",
+        subtitle: "Measure relative variance: CV = std / mean * 100",
         query: "Calculate coefficient of variation for profit",
-        icon: "🎯",
-        tag: "VARIATION"
-      },
-      {
-        id: "summary",
-        title: "Descriptive Statistics",
-        desc: "Parametric mean, median, IQR, quartiles, and range",
-        query: "Give summary statistics for sales",
-        icon: "📊",
-        tag: "STATISTICS"
+        icon: "🎯"
       }
     ];
 
     function App() {
+      const [sidebarOpen, setSidebarOpen] = useState(true);
       const [dataset, setDataset] = useState(DEFAULT_DATASET);
-      const [messages, setMessages] = useState([
-        {
-          id: 'welcome',
-          sender: 'agent',
-          title: 'DATAFLIX AI ANALYST',
-          text: `Welcome! I am your AI Data Analyst agent. All computations are performed deterministically via the **Analysis SDK** and validated against **pgvector skills** — no hallucinations or unverified numbers.`,
-          chartSpec: null,
-          verified: true,
-          skillId: 'system_core',
-          timestamp: 'Just now'
-        }
-      ]);
+      const [messages, setMessages] = useState([]);
       const [inputQuery, setInputQuery] = useState('');
       const [isLoading, setIsLoading] = useState(false);
-      const [activeNav, setActiveNav] = useState('datasets');
       const [pendingApproval, setPendingApproval] = useState(null);
-      const [showHistory, setShowHistory] = useState(false);
-      const [jobHistory, setJobHistory] = useState([]);
+      const [chatHistory, setChatHistory] = useState([
+        { id: '1', title: 'Sales vs Profit Correlation', date: 'Today' },
+        { id: '2', title: 'Regional Profit Margin by Product', date: 'Yesterday' }
+      ]);
       const [uploading, setUploading] = useState(false);
 
       const messagesEndRef = useRef(null);
       const fileInputRef = useRef(null);
+      const inputRef = useRef(null);
 
       const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -161,9 +128,9 @@
 
       useEffect(() => {
         scrollToBottom();
-      }, [messages, pendingApproval]);
+      }, [messages, pendingApproval, isLoading]);
 
-      // Initialize dataset in backend if needed
+      // Seed initial sample dataset in background if not already seeded
       useEffect(() => {
         async function initSample() {
           const sampleCSV = `region,product,sales,profit,quantity,date
@@ -190,13 +157,19 @@ North,Data Warehouse,140000,39000,13,2026-02-28`;
               });
             }
           } catch (e) {
-            console.warn('Backend offline or standalone fallback', e);
+            console.warn('Backend initialized in offline fallback mode', e);
           }
         }
         initSample();
       }, []);
 
-      // Handle CSV File Upload
+      const startNewChat = () => {
+        setMessages([]);
+        setPendingApproval(null);
+        setInputQuery('');
+        inputRef.current?.focus();
+      };
+
       const handleFileUpload = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -215,9 +188,10 @@ North,Data Warehouse,140000,39000,13,2026-02-28`;
             {
               id: 'upload_' + Date.now(),
               sender: 'agent',
-              title: `Dataset Loaded: ${data.filename}`,
-              text: `Ingested **${data.row_count.toLocaleString()} rows** and **${data.column_count} columns** into PostgreSQL table \`${data.table_name}\`.\n\n**Numeric Columns:** ${data.numeric_columns.join(', ')}\n**Dimensions:** ${data.categorical_columns.join(', ')}`,
-              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              text: `📁 **Dataset \`${data.filename}\` uploaded successfully!**\n\n- **Rows:** ${data.row_count.toLocaleString()}\n- **Columns:** ${data.column_count} (${data.columns.join(', ')})\n- **Numeric metrics:** ${data.numeric_columns.join(', ')}\n- **Dimensions:** ${data.categorical_columns.join(', ')}\n\nWhat would you like to analyze?`,
+              chartSpec: null,
+              verified: true,
+              timestamp: 'Just now'
             }
           ]);
         } catch (err) {
@@ -227,10 +201,9 @@ North,Data Warehouse,140000,39000,13,2026-02-28`;
         }
       };
 
-      // Execute Question Query
-      const handleSend = async (queryText) => {
-        const q = queryText || inputQuery;
-        if (!q.trim()) return;
+      const handleSend = async (customQuery) => {
+        const query = customQuery || inputQuery;
+        if (!query.trim()) return;
 
         setInputQuery('');
         setIsLoading(true);
@@ -238,10 +211,13 @@ North,Data Warehouse,140000,39000,13,2026-02-28`;
         const userMsg = {
           id: 'user_' + Date.now(),
           sender: 'user',
-          text: q,
+          text: query,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         };
         setMessages(prev => [...prev, userMsg]);
+
+        // Add to history
+        setChatHistory(prev => [{ id: String(Date.now()), title: query.slice(0, 36) + '...', date: 'Today' }, ...prev]);
 
         try {
           const res = await fetch('/chat', {
@@ -249,7 +225,7 @@ North,Data Warehouse,140000,39000,13,2026-02-28`;
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               dataset_id: dataset.dataset_id,
-              question: q
+              question: query
             })
           });
           const data = await res.json();
@@ -259,17 +235,15 @@ North,Data Warehouse,140000,39000,13,2026-02-28`;
             setPendingApproval({
               job_id: data.job_id,
               method: data.proposed_method,
-              question: q
+              question: query
             });
             setIsLoading(false);
             return;
           }
 
-          // Completed analysis
           const agentMsg = {
             id: data.job_id || 'agent_' + Date.now(),
             sender: 'agent',
-            title: data.analysis_plan?.analysis_type?.toUpperCase() || 'ANALYSIS RESULTS',
             text: data.markdown || 'Analysis completed.',
             chartSpec: data.chart,
             sdkOutput: data.sdk_output,
@@ -279,15 +253,13 @@ North,Data Warehouse,140000,39000,13,2026-02-28`;
             jobId: data.job_id
           };
           setMessages(prev => [...prev, agentMsg]);
-          setJobHistory(prev => [data, ...prev]);
         } catch (err) {
           setMessages(prev => [
             ...prev,
             {
               id: 'err_' + Date.now(),
               sender: 'agent',
-              title: 'SYSTEM ERROR',
-              text: `Execution failed: ${err.message}`,
+              text: `⚠️ **Execution Error:** ${err.message}`,
               timestamp: 'Now'
             }
           ]);
@@ -296,8 +268,7 @@ North,Data Warehouse,140000,39000,13,2026-02-28`;
         }
       };
 
-      // Approve Custom Method
-      const handleApproveMethod = async () => {
+      const handleApprove = async () => {
         if (!pendingApproval) return;
         setIsLoading(true);
         const jobId = pendingApproval.job_id;
@@ -315,12 +286,11 @@ North,Data Warehouse,140000,39000,13,2026-02-28`;
             {
               id: jobId,
               sender: 'agent',
-              title: 'APPROVED METHOD EXECUTED',
-              text: data.markdown || 'Dynamic analysis completed and saved as skill v1.',
+              text: data.markdown || 'Dynamic analysis completed and saved as reusable skill v1.',
               chartSpec: data.chart,
               sdkOutput: data.sdk_output,
               verified: true,
-              skillId: 'custom_skill_approved',
+              skillId: 'custom_approved_v1',
               timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
               jobId: jobId
             }
@@ -332,10 +302,9 @@ North,Data Warehouse,140000,39000,13,2026-02-28`;
         }
       };
 
-      // Reject / Modify Custom Method
-      const handleRejectMethod = async () => {
+      const handleReject = async () => {
         if (!pendingApproval) return;
-        const promptMod = prompt('What modification should be made to this analysis?');
+        const comment = prompt('How should this analysis methodology be modified?');
         const jobId = pendingApproval.job_id;
         setPendingApproval(null);
 
@@ -343,15 +312,14 @@ North,Data Warehouse,140000,39000,13,2026-02-28`;
           await fetch('/analysis/reject', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ job_id: jobId, modification_instructions: promptMod })
+            body: JSON.stringify({ job_id: jobId, modification_instructions: comment })
           });
           setMessages(prev => [
             ...prev,
             {
               id: 'rej_' + Date.now(),
               sender: 'agent',
-              title: 'METHOD REVISED',
-              text: `Proposal adjusted per your instructions: *"${promptMod || 'Analysis rejected'}"*.`,
+              text: `⚠️ Analysis proposal updated per your feedback: *"${comment || 'Method modified'}"*.`,
               timestamp: 'Now'
             }
           ]);
@@ -360,9 +328,8 @@ North,Data Warehouse,140000,39000,13,2026-02-28`;
         }
       };
 
-      // Feedback for methodology correction (Section 27: creates v2)
       const handleFeedback = async (jobId) => {
-        const fb = prompt("How should this methodology be corrected? (e.g. 'Use population standard deviation ddof=0')");
+        const fb = prompt("How should the calculation be adjusted? (e.g. 'Use population standard deviation ddof=0')");
         if (!fb) return;
         setIsLoading(true);
         try {
@@ -377,7 +344,6 @@ North,Data Warehouse,140000,39000,13,2026-02-28`;
             {
               id: 'fb_' + Date.now(),
               sender: 'agent',
-              title: `SKILL UPDATED TO V${data.revised_skill?.version || 2}`,
               text: data.markdown,
               chartSpec: data.chart,
               verified: true,
@@ -394,240 +360,257 @@ North,Data Warehouse,140000,39000,13,2026-02-28`;
       };
 
       return (
-        <div class="flex h-full w-full bg-netflixDark">
+        <div class="flex h-full w-full bg-netflixBlack text-white antialiased">
           
-          {/* LEFT SIDEBAR (Netflix Minimalist Icon Navigation) */}
-          <nav class="w-16 md:w-20 bg-netflixBlack border-r border-netflixBorder flex flex-col items-center py-6 justify-between select-none z-20">
-            <div class="flex flex-col items-center gap-8 w-full">
-              {/* Netflix Red Brand Icon */}
-              <div class="cursor-pointer group flex flex-col items-center">
-                <span class="text-netflixRed font-netflix text-4xl tracking-tighter hover:scale-105 transition-transform duration-200">D</span>
-                <span class="text-[9px] font-bold tracking-widest text-netflixRed -mt-2">FLIX</span>
-              </div>
-
-              {/* Nav Icons */}
-              <div class="flex flex-col gap-6 w-full items-center">
-                <button 
-                  onClick={() => setActiveNav('datasets')}
-                  title="Datasets"
-                  class={`p-3 rounded-xl transition-all duration-200 relative group ${activeNav === 'datasets' ? 'text-netflixRed bg-netflixCard glow-red' : 'text-netflixTextMuted hover:text-white hover:bg-netflixCard'}`}>
-                  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2 1.5 3 3.5 3h9c2 0 3.5-1 3.5-3V7M4 7c0-2 1.5-3 3.5-3h9c2 0 3.5 1 3.5 3M4 7h16M4 12h16"></path></svg>
-                  {activeNav === 'datasets' && <span class="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-netflixRed rounded-r-md"></span>}
-                </button>
-
-                <button 
-                  onClick={() => setActiveNav('skills')}
-                  title="Saved Skills"
-                  class={`p-3 rounded-xl transition-all duration-200 relative group ${activeNav === 'skills' ? 'text-netflixRed bg-netflixCard glow-red' : 'text-netflixTextMuted hover:text-white hover:bg-netflixCard'}`}>
-                  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"></path></svg>
-                  {activeNav === 'skills' && <span class="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-netflixRed rounded-r-md"></span>}
-                </button>
-
-                <button 
-                  onClick={() => setShowHistory(!showHistory)}
-                  title="Job History"
-                  class={`p-3 rounded-xl transition-all duration-200 relative group ${showHistory ? 'text-netflixRed bg-netflixCard glow-red' : 'text-netflixTextMuted hover:text-white hover:bg-netflixCard'}`}>
-                  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                </button>
-              </div>
-            </div>
-
-            {/* User Profile / Status */}
-            <div class="flex flex-col items-center gap-4">
-              <div class="w-9 h-9 rounded-lg bg-netflixRed text-white font-bold flex items-center justify-center text-sm shadow-md cursor-pointer hover:ring-2 hover:ring-white transition-all">
-                S
-              </div>
-            </div>
-          </nav>
-
-          {/* MAIN CONTENT AREA */}
-          <div class="flex-1 flex flex-col h-full bg-netflixBlack overflow-hidden relative">
-            
-            {/* TOP NAVIGATION BAR */}
-            <header class="h-16 border-b border-netflixBorder px-6 flex items-center justify-between bg-netflixBlack/90 backdrop-blur-md z-10">
-              <div class="flex items-center gap-6">
-                <div class="flex items-center gap-2">
-                  <span class="font-netflix text-2xl tracking-wider text-netflixRed">DATAFLIX</span>
-                  <span class="text-xs uppercase tracking-widest text-netflixTextMuted border-l border-netflixBorder pl-2 font-semibold">ANALYST</span>
+          {/* CHATGPT-STYLE SIDEBAR (Styled with Netflix Black & Red) */}
+          <aside class={`${sidebarOpen ? 'w-64' : 'w-0'} transition-all duration-300 ease-in-out bg-netflixSidebar border-r border-netflixBorder flex flex-col justify-between overflow-hidden z-30 select-none`}>
+            <div class="p-3 flex flex-col h-full">
+              
+              {/* Brand & New Chat */}
+              <div class="flex items-center justify-between px-2 pt-2 pb-3">
+                <div class="flex items-center gap-2 cursor-pointer" onClick={startNewChat}>
+                  <span class="text-netflixRed font-netflix text-2xl tracking-wider">DATAFLIX</span>
+                  <span class="text-[10px] font-bold tracking-widest text-netflixTextMuted uppercase border-l border-netflixBorder pl-1.5">AI</span>
                 </div>
+                <button 
+                  onClick={() => setSidebarOpen(false)}
+                  class="text-netflixTextMuted hover:text-white p-1 rounded-md hover:bg-netflixCard transition-colors">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"></path></svg>
+                </button>
+              </div>
 
-                {/* Dataset Badge / Switcher */}
-                <div class="flex items-center gap-2 bg-netflixCard hover:bg-netflixCardHover border border-netflixBorder px-3 py-1.5 rounded-full cursor-pointer transition-colors"
-                     onClick={() => fileInputRef.current?.click()}>
-                  <span class="text-xs font-semibold text-netflixTextMuted uppercase">Dataset</span>
-                  <span class="text-xs font-bold text-white flex items-center gap-1.5">
-                    <span class="w-2 h-2 rounded-full bg-netflixGreen animate-pulse"></span>
-                    {dataset.filename}
-                  </span>
-                  <svg class="w-3.5 h-3.5 text-netflixTextMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+              {/* + New Analysis Button (ChatGPT Style with Netflix Red accent) */}
+              <button 
+                onClick={startNewChat}
+                class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl border border-netflixBorder bg-netflixCard hover:bg-netflixCardHover hover:border-netflixRed text-sm font-semibold transition-all duration-200 group mb-4">
+                <span class="flex items-center gap-2">
+                  <svg class="w-4 h-4 text-netflixRed group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                  New Analysis
+                </span>
+                <span class="text-[10px] bg-netflixBlack px-1.5 py-0.5 rounded text-netflixTextMuted border border-netflixBorder">⌘N</span>
+              </button>
+
+              {/* Active Dataset Status Box */}
+              <div class="bg-netflixDark border border-netflixBorder rounded-xl p-3 mb-4">
+                <div class="flex items-center justify-between text-[11px] font-bold text-netflixTextMuted uppercase tracking-wider mb-1.5">
+                  <span>Current Dataset</span>
+                  <span class="w-2 h-2 rounded-full bg-netflixGreen animate-pulse"></span>
                 </div>
+                <p class="text-xs font-semibold text-white truncate">{dataset.filename}</p>
+                <p class="text-[11px] text-netflixTextMuted mt-0.5">{dataset.row_count?.toLocaleString()} rows • {dataset.column_count} cols</p>
+                
+                <button 
+                  onClick={() => fileInputRef.current?.click()}
+                  class="mt-2.5 w-full text-[11px] text-netflixRed hover:text-white font-semibold py-1 rounded border border-netflixRed/30 hover:bg-netflixRed/20 transition-all flex items-center justify-center gap-1">
+                  <span>📁</span> {uploading ? 'Uploading...' : 'Switch Dataset'}
+                </button>
                 <input type="file" ref={fileInputRef} class="hidden" accept=".csv" onChange={handleFileUpload} />
               </div>
 
-              {/* Right Controls */}
-              <div class="flex items-center gap-4">
-                <div class="relative hidden sm:block">
-                  <input 
-                    type="text" 
-                    placeholder="Search metrics, skills, charts..." 
-                    class="bg-netflixCard border border-netflixBorder rounded-full pl-9 pr-4 py-1.5 text-xs text-white placeholder-netflixTextMuted focus:outline-none focus:border-netflixRed transition-colors w-64"
-                  />
-                  <svg class="w-4 h-4 text-netflixTextMuted absolute left-3 top-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                </div>
+              {/* Recent Analyses List */}
+              <div class="flex-1 overflow-y-auto space-y-1 pr-1">
+                <div class="text-[11px] font-bold text-netflixTextMuted px-2 py-1 uppercase tracking-wider">Recent Questions</div>
+                {chatHistory.map((item, idx) => (
+                  <button 
+                    key={idx}
+                    onClick={() => handleSend(item.title)}
+                    class="w-full text-left text-xs px-2.5 py-2 rounded-lg text-gray-300 hover:text-white hover:bg-netflixCard flex items-center gap-2 truncate transition-colors group">
+                    <svg class="w-3.5 h-3.5 text-netflixTextMuted group-hover:text-netflixRed flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
+                    <span class="truncate">{item.title}</span>
+                  </button>
+                ))}
+              </div>
 
+              {/* Bottom Profile Section */}
+              <div class="pt-3 border-t border-netflixBorder flex items-center justify-between px-1">
+                <div class="flex items-center gap-2.5">
+                  <div class="w-8 h-8 rounded-full bg-netflixRed text-white font-bold flex items-center justify-center text-xs shadow-md">
+                    S
+                  </div>
+                  <div class="text-xs">
+                    <p class="font-semibold text-white">Shashikumar</p>
+                    <p class="text-[10px] text-netflixTextMuted">Analysis SDK Active</p>
+                  </div>
+                </div>
+                <span class="text-xs text-netflixTextMuted">⚙️</span>
+              </div>
+
+            </div>
+          </aside>
+
+          {/* MAIN CHATGPT-STYLE CHAT AREA */}
+          <main class="flex-1 flex flex-col h-full bg-netflixBlack relative overflow-hidden">
+            
+            {/* Minimal Top Header */}
+            <header class="h-14 border-b border-netflixBorder px-4 flex items-center justify-between bg-netflixBlack/90 backdrop-blur-md z-10">
+              <div class="flex items-center gap-3">
+                {!sidebarOpen && (
+                  <button 
+                    onClick={() => setSidebarOpen(true)}
+                    class="text-netflixTextMuted hover:text-white p-1.5 rounded-lg hover:bg-netflixCard transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                  </button>
+                )}
+                
+                <div class="flex items-center gap-2">
+                  <span class="text-xs font-semibold text-netflixTextMuted uppercase">Active Context:</span>
+                  <span class="bg-netflixCard border border-netflixBorder px-2.5 py-1 rounded-full text-xs font-medium text-white flex items-center gap-1.5">
+                    <span class="w-1.5 h-1.5 rounded-full bg-netflixGreen"></span>
+                    {dataset.filename}
+                  </span>
+                </div>
+              </div>
+
+              <div class="flex items-center gap-3">
                 <button 
-                  onClick={() => fileInputRef.current?.click()}
-                  class="bg-netflixRed hover:bg-netflixRedHover text-white text-xs font-bold px-4 py-2 rounded-full transition-all duration-200 flex items-center gap-1.5 shadow-md hover:shadow-red-600/30">
-                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
-                  {uploading ? 'Uploading...' : 'Upload CSV'}
+                  onClick={startNewChat}
+                  title="Clear conversation"
+                  class="text-xs text-netflixTextMuted hover:text-white px-2.5 py-1 rounded-md hover:bg-netflixCard transition-colors">
+                  Clear
                 </button>
               </div>
             </header>
 
-            {/* SCROLLABLE DASHBOARD VIEW */}
-            <div class="flex-1 overflow-y-auto px-6 py-6 space-y-6">
-
-              {/* RECOMMENDED ANALYSES (Netflix Horizontal Carousel) */}
-              <div>
-                <div class="flex items-center justify-between mb-3">
-                  <h2 class="text-sm font-bold uppercase tracking-wider text-white flex items-center gap-2">
-                    <span class="text-netflixRed">▶</span> Recommended Analyses
-                  </h2>
-                  <span class="text-xs text-netflixTextMuted">Select to run instantly</span>
-                </div>
-
-                <div class="flex gap-4 overflow-x-auto pb-2 carousel-container no-scrollbar">
-                  {RECOMMENDED_CAROUSEL.map(item => (
-                    <div 
-                      key={item.id}
-                      onClick={() => handleSend(item.query)}
-                      class="min-w-[260px] md:min-w-[300px] bg-netflixCard border border-netflixBorder rounded-xl p-4 cursor-pointer transition-all duration-300 hover:scale-[1.03] glow-red-hover flex flex-col justify-between group relative overflow-hidden">
-                      <div class="absolute top-0 right-0 w-24 h-24 bg-netflixRed/10 rounded-full blur-2xl group-hover:bg-netflixRed/20 transition-all"></div>
-                      <div>
-                        <div class="flex items-center justify-between mb-2">
-                          <span class="text-xs font-bold text-netflixRed tracking-wider uppercase">{item.tag}</span>
-                          <span class="text-lg">{item.icon}</span>
-                        </div>
-                        <h3 class="text-sm font-bold text-white group-hover:text-netflixRed transition-colors mb-1">{item.title}</h3>
-                        <p class="text-xs text-netflixTextMuted leading-relaxed">{item.desc}</p>
-                      </div>
-                      <div class="mt-4 pt-3 border-t border-netflixBorder/50 flex items-center justify-between text-[11px] text-netflixTextMuted group-hover:text-white font-medium">
-                        <span>Run Skill</span>
-                        <span class="text-netflixRed group-hover:translate-x-1 transition-transform">→</span>
-                      </div>
+            {/* CHAT MESSAGES STREAM */}
+            <div class="flex-1 overflow-y-auto p-4 md:p-6 chat-container">
+              <div class="max-w-3xl mx-auto space-y-6 pb-32">
+                
+                {/* EMPTY STATE / CHATGPT WELCOME HERO (Netflix-styled) */}
+                {messages.length === 0 && (
+                  <div class="py-12 flex flex-col items-center text-center animate-fade-in">
+                    <div class="w-14 h-14 rounded-2xl bg-netflixRed flex items-center justify-center font-netflix text-3xl text-white shadow-2xl mb-4">
+                      DF
                     </div>
-                  ))}
-                </div>
-              </div>
+                    <h1 class="text-2xl md:text-3xl font-bold text-white tracking-tight mb-2">
+                      What would you like to analyze today?
+                    </h1>
+                    <p class="text-xs md:text-sm text-netflixTextMuted max-w-md leading-relaxed mb-8">
+                      Ask any question about <strong class="text-white font-semibold">{dataset.filename}</strong>. Deterministic calculations are computed via the Analysis SDK.
+                    </p>
 
-              {/* CONVERSATION & TIMELINE STREAM */}
-              <div class="space-y-4 max-w-5xl mx-auto pb-24">
+                    {/* 4 Netflix-style Quick Action Cards */}
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5 w-full text-left">
+                      {QUICK_PROMPTS.map((prompt, i) => (
+                        <div 
+                          key={i}
+                          onClick={() => handleSend(prompt.query)}
+                          class="bg-netflixCard border border-netflixBorder hover:border-netflixRed rounded-xl p-4 cursor-pointer transition-all duration-200 hover:scale-[1.02] glow-red-hover group relative overflow-hidden">
+                          <div class="flex items-center justify-between mb-1.5">
+                            <span class="text-base">{prompt.icon}</span>
+                            <span class="text-netflixTextMuted group-hover:text-netflixRed text-xs transition-colors">→</span>
+                          </div>
+                          <h3 class="text-xs font-bold text-white group-hover:text-netflixRed transition-colors">{prompt.title}</h3>
+                          <p class="text-[11px] text-netflixTextMuted mt-0.5 leading-snug">{prompt.subtitle}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* MESSAGES THREAD */}
                 {messages.map((msg) => (
-                  <MessageBubble 
-                    key={msg.id} 
-                    message={msg} 
-                    onFeedback={handleFeedback} 
-                  />
+                  <MessageRow key={msg.id} message={msg} onFeedback={handleFeedback} />
                 ))}
 
                 {/* SLEEK HUMAN APPROVAL CARD (Section 24 of Flow.md) */}
                 {pendingApproval && (
-                  <div class="bg-netflixCard border-2 border-netflixRed rounded-2xl p-6 glow-red animate-fade-in relative overflow-hidden">
-                    <div class="flex items-start justify-between">
-                      <div class="flex items-center gap-3">
-                        <div class="w-8 h-8 rounded-lg bg-netflixRed/20 text-netflixRed flex items-center justify-center font-bold text-lg">
-                          🛡️
-                        </div>
-                        <div>
-                          <h3 class="text-base font-bold text-white tracking-wide">Sleek Human Approval Required</h3>
-                          <p class="text-xs text-netflixTextMuted mt-0.5">
-                            No existing skill found in pgvector. Proposed new methodology for *"{pendingApproval.question}"*:
-                          </p>
-                        </div>
+                  <div class="bg-netflixCard border-2 border-netflixRed rounded-2xl p-6 glow-red animate-fade-in max-w-2xl mx-auto my-4">
+                    <div class="flex items-center gap-3 mb-3">
+                      <div class="w-8 h-8 rounded-lg bg-netflixRed/20 text-netflixRed flex items-center justify-center font-bold text-base">
+                        🛡️
                       </div>
-                      <span class="bg-amber-500/20 text-amber-400 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider">
-                        Pending Approval
-                      </span>
+                      <div>
+                        <h3 class="text-sm font-bold text-white">Sleek Human Approval Required</h3>
+                        <p class="text-xs text-netflixTextMuted">No existing skill found in pgvector. Generated new logic for approval:</p>
+                      </div>
                     </div>
 
-                    {/* Method Specification Box */}
-                    <div class="mt-4 bg-netflixDark border border-netflixBorder rounded-xl p-4 font-mono text-xs space-y-1.5">
+                    <div class="bg-netflixDark border border-netflixBorder rounded-xl p-4 font-mono text-xs space-y-1.5 text-gray-300">
                       <p><span class="text-netflixTextMuted">Method:</span> <strong class="text-white">{pendingApproval.method?.name || 'Dynamic Method'}</strong></p>
-                      <p><span class="text-netflixTextMuted">Formula:</span> <span class="text-netflixCyan">{pendingApproval.method?.formula || 'N/A'}</span></p>
-                      <p><span class="text-netflixTextMuted">Required Columns:</span> <span class="text-white">{(pendingApproval.method?.required_inputs || []).join(', ')}</span></p>
+                      <p><span class="text-netflixTextMuted">Formula:</span> <span class="text-netflixCyan">{pendingApproval.method?.formula || 'Custom logic'}</span></p>
+                      <p><span class="text-netflixTextMuted">Target Columns:</span> <span class="text-white">{(pendingApproval.method?.required_inputs || []).join(', ')}</span></p>
                       <p><span class="text-netflixTextMuted">Logic:</span> <span class="text-emerald-400">{pendingApproval.method?.logic || 'Safe execution via Analysis SDK'}</span></p>
                     </div>
 
-                    {/* Action Buttons */}
-                    <div class="mt-5 flex items-center justify-end gap-3">
+                    <div class="mt-4 flex items-center justify-end gap-3">
                       <button 
-                        onClick={handleRejectMethod}
-                        class="px-5 py-2 rounded-xl text-xs font-semibold text-netflixTextMuted hover:text-white bg-netflixDark border border-netflixBorder hover:border-netflixTextMuted transition-all">
+                        onClick={handleReject}
+                        class="px-4 py-2 rounded-xl text-xs font-semibold text-netflixTextMuted hover:text-white bg-netflixDark border border-netflixBorder hover:border-gray-500 transition-all">
                         [ MODIFY ]
                       </button>
                       <button 
-                        onClick={handleApproveMethod}
-                        class="px-6 py-2 rounded-xl text-xs font-bold text-white bg-netflixGreen hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-900/40">
+                        onClick={handleApprove}
+                        class="px-6 py-2 rounded-xl text-xs font-bold text-white bg-netflixGreen hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-900/30">
                         [ APPROVE & EXECUTE ]
                       </button>
                     </div>
                   </div>
                 )}
 
-                {/* Loading Skeleton */}
+                {/* Loading indicator (ChatGPT style pulse) */}
                 {isLoading && (
-                  <div class="flex items-center gap-3 text-xs text-netflixTextMuted p-4 bg-netflixCard/60 rounded-xl border border-netflixBorder animate-pulse">
-                    <span class="w-3 h-3 rounded-full bg-netflixRed animate-ping"></span>
-                    <span>LangGraph agent orchestrating: Checking relevance → Searching pgvector skills → Executing Analysis SDK...</span>
+                  <div class="flex items-start gap-4">
+                    <div class="w-8 h-8 rounded-lg bg-netflixRed text-white flex items-center justify-center font-netflix text-sm flex-shrink-0 shadow-md">
+                      DF
+                    </div>
+                    <div class="flex items-center gap-2 text-xs text-netflixTextMuted bg-netflixCard border border-netflixBorder px-4 py-3 rounded-2xl rounded-tl-sm animate-pulse">
+                      <span class="w-2 h-2 rounded-full bg-netflixRed animate-ping"></span>
+                      <span>Calculating deterministic metrics via Analysis SDK...</span>
+                    </div>
                   </div>
                 )}
 
                 <div ref={messagesEndRef} />
               </div>
-
             </div>
 
-            {/* FLOATING BOTTOM INPUT BAR */}
-            <div class="absolute bottom-6 left-1/2 -translate-x-1/2 w-full max-w-3xl px-6 z-20">
-              <div class="bg-netflixCard/90 backdrop-blur-xl border border-netflixBorder focus-within:border-netflixRed rounded-full p-2 flex items-center shadow-2xl transition-all duration-300 glow-red-hover">
-                
-                {/* Attachment Icon */}
-                <button 
-                  onClick={() => fileInputRef.current?.click()}
-                  title="Upload dataset"
-                  class="p-2 text-netflixTextMuted hover:text-white transition-colors rounded-full hover:bg-netflixBorder/50 ml-1">
-                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
-                </button>
+            {/* CHATGPT-STYLE BOTTOM FLOATING INPUT BOX */}
+            <div class="absolute bottom-0 left-0 w-full bg-gradient-to-t from-netflixBlack via-netflixBlack/90 to-transparent pt-6 pb-6 px-4 z-20">
+              <div class="max-w-3xl mx-auto">
+                <div class="bg-netflixCard border border-netflixBorder focus-within:border-netflixRed rounded-2xl p-2.5 flex items-center shadow-2xl transition-all duration-200 glow-red-hover">
+                  
+                  {/* CSV Attachment Icon */}
+                  <button 
+                    onClick={() => fileInputRef.current?.click()}
+                    title="Upload or switch dataset"
+                    class="p-2 text-netflixTextMuted hover:text-white transition-colors rounded-xl hover:bg-netflixBorder/50">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
+                  </button>
 
-                {/* Text Input */}
-                <input 
-                  type="text"
-                  value={inputQuery}
-                  onChange={(e) => setInputQuery(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                  placeholder="Ask a question about your data (e.g. 'Find correlation between sales and profit')..."
-                  class="flex-1 bg-transparent px-4 py-2 text-sm text-white placeholder-netflixTextMuted focus:outline-none"
-                />
+                  {/* Input Field */}
+                  <input 
+                    ref={inputRef}
+                    type="text"
+                    value={inputQuery}
+                    onChange={(e) => setInputQuery(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+                    placeholder="Ask a question about your data..."
+                    class="flex-1 bg-transparent px-3 py-1.5 text-sm text-white placeholder-netflixTextMuted focus:outline-none"
+                  />
 
-                {/* Send Button */}
-                <button 
-                  onClick={() => handleSend()}
-                  disabled={isLoading || !inputQuery.trim()}
-                  class="bg-netflixRed hover:bg-netflixRedHover disabled:opacity-50 text-white font-bold px-6 py-2 rounded-full text-xs transition-all shadow-md flex items-center gap-1.5 cursor-pointer">
-                  <span>Send</span>
-                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
-                </button>
+                  {/* Send Button */}
+                  <button 
+                    onClick={() => handleSend()}
+                    disabled={isLoading || !inputQuery.trim()}
+                    class={`p-2 rounded-xl text-white transition-all flex items-center justify-center ${inputQuery.trim() ? 'bg-netflixRed hover:bg-netflixRedHover shadow-lg shadow-red-600/30' : 'bg-netflixBorder text-netflixTextMuted cursor-not-allowed'}`}>
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>
+                  </button>
+                </div>
+
+                <p class="text-[10px] text-center text-netflixTextMuted mt-2">
+                  Dataflix performs deterministic calculations via the Analysis SDK. Reusable skills validated in pgvector.
+                </p>
               </div>
             </div>
 
-          </div>
+          </main>
 
         </div>
       );
     }
 
-    // Message Card Component
-    function MessageBubble({ message, onFeedback }) {
+    // Individual Message Row (ChatGPT Layout)
+    function MessageRow({ message, onFeedback }) {
       const isUser = message.sender === 'user';
       const canvasRef = useRef(null);
       const chartInstanceRef = useRef(null);
@@ -655,13 +638,13 @@ North,Data Warehouse,140000,39000,13,2026-02-28`;
               pointHoverRadius: 8
             }));
           } else {
-            datasets = (spec.series || []).map((s, idx) => ({
+            datasets = (spec.series || []).map(s => ({
               label: s.name,
               data: s.data,
               backgroundColor: type === 'pie' 
                 ? ['#E50914', '#00F0FF', '#46d369', '#f59e0b', '#8b5cf6'] 
                 : '#E50914',
-              borderColor: '#0b0b0b',
+              borderColor: '#171717',
               borderWidth: 1.5,
               borderRadius: 6
             }));
@@ -678,7 +661,7 @@ North,Data Warehouse,140000,39000,13,2026-02-28`;
                   display: !!spec.title, 
                   text: spec.title, 
                   color: '#ffffff', 
-                  font: { size: 14, weight: 'bold', family: 'Inter' } 
+                  font: { size: 13, weight: 'bold', family: 'Inter' } 
                 },
                 legend: { labels: { color: '#999999', font: { family: 'Inter' } } }
               },
@@ -702,13 +685,14 @@ North,Data Warehouse,140000,39000,13,2026-02-28`;
         };
       }, [message.chartSpec]);
 
+      // USER MESSAGE (ChatGPT style right-aligned bubble)
       if (isUser) {
         return (
-          <div class="flex justify-end items-center gap-3">
-            <div class="bg-netflixCard border border-netflixBorder px-5 py-3 rounded-2xl rounded-tr-sm text-sm text-white max-w-xl shadow-lg leading-relaxed">
+          <div class="flex justify-end items-start gap-3">
+            <div class="bg-netflixCard border border-netflixBorder px-4 py-2.5 rounded-2xl rounded-tr-sm text-sm text-gray-100 max-w-xl shadow-md leading-relaxed">
               {message.text}
             </div>
-            <div class="w-8 h-8 rounded-full bg-netflixRed flex items-center justify-center font-bold text-xs text-white shadow-md">
+            <div class="w-8 h-8 rounded-full bg-netflixRed flex items-center justify-center font-bold text-xs text-white shadow-md flex-shrink-0">
               U
             </div>
           </div>
@@ -716,7 +700,7 @@ North,Data Warehouse,140000,39000,13,2026-02-28`;
       }
 
       // Format markdown helper
-      const renderFormattedText = (raw) => {
+      const formatContent = (raw) => {
         if (!raw) return '';
         const lines = raw.split('\n');
         return lines.map((line, idx) => {
@@ -727,7 +711,7 @@ North,Data Warehouse,140000,39000,13,2026-02-28`;
             return <h4 key={idx} class="text-xs uppercase tracking-wider font-semibold text-netflixRed mt-3 mb-1">{line.replace('### ', '')}</h4>;
           }
           if (line.includes('{{chart:')) {
-            return null; // Chart rendered below
+            return null; // Chart rendered in container below
           }
           if (line.startsWith('> ')) {
             return <blockquote key={idx} class="border-l-2 border-netflixRed pl-3 text-xs text-netflixTextMuted italic my-2">{line.replace('> ', '')}</blockquote>;
@@ -739,42 +723,36 @@ North,Data Warehouse,140000,39000,13,2026-02-28`;
         });
       };
 
+      // AGENT MESSAGE (ChatGPT style clean assistant block)
       return (
-        <div class="flex items-start gap-4">
-          <div class="w-9 h-9 rounded-xl bg-netflixRed text-white flex items-center justify-center font-netflix text-lg tracking-wider flex-shrink-0 shadow-lg glow-red">
+        <div class="flex items-start gap-3.5">
+          <div class="w-8 h-8 rounded-lg bg-netflixRed text-white flex items-center justify-center font-netflix text-base flex-shrink-0 shadow-md">
             DF
           </div>
-          <div class="flex-1 bg-netflixCard border border-netflixBorder rounded-2xl rounded-tl-sm p-6 shadow-xl space-y-4">
+          <div class="flex-1 bg-netflixCard border border-netflixBorder rounded-2xl rounded-tl-sm p-5 shadow-lg space-y-3">
             
-            {/* Header info */}
-            <div class="flex items-center justify-between border-b border-netflixBorder pb-3">
-              <span class="text-xs font-bold tracking-widest text-netflixRed uppercase font-netflix text-base">{message.title}</span>
-              <span class="text-[11px] text-netflixTextMuted">{message.timestamp}</span>
-            </div>
-
-            {/* Markdown Content */}
             <div class="space-y-1">
-              {renderFormattedText(message.text)}
+              {formatContent(message.text)}
             </div>
 
-            {/* Glowing Interactive Chart */}
+            {/* Glowing Chart Visual */}
             {message.chartSpec && (
-              <div class="bg-netflixDark border border-netflixBorder rounded-xl p-4 h-72 w-full mt-3 relative overflow-hidden">
+              <div class="bg-netflixDark border border-netflixBorder rounded-xl p-3 h-64 w-full mt-3 relative overflow-hidden">
                 <canvas ref={canvasRef}></canvas>
               </div>
             )}
 
-            {/* Footer with Deterministic Verification & Feedback */}
-            <div class="pt-3 border-t border-netflixBorder/70 flex flex-wrap items-center justify-between gap-3 text-[11px]">
-              <div class="flex items-center gap-2 text-netflixTextMuted">
+            {/* Provenance Badge & Feedback action */}
+            <div class="pt-2.5 border-t border-netflixBorder/70 flex flex-wrap items-center justify-between gap-2 text-[11px]">
+              <div class="flex items-center gap-1.5 text-netflixTextMuted">
                 <span class="text-emerald-400">🛡️</span>
-                <span>Deterministic Verification • <strong class="text-white font-mono">{message.skillId}</strong></span>
+                <span>Deterministic Verification • <strong class="text-white font-mono">{message.skillId || 'SDK'}</strong></span>
               </div>
 
               {message.jobId && (
                 <button 
                   onClick={() => onFeedback(message.jobId)}
-                  class="text-xs text-netflixRed hover:text-white flex items-center gap-1.5 transition-colors border border-netflixRed/30 hover:border-netflixRed px-3 py-1 rounded-full">
+                  class="text-[11px] text-netflixRed hover:text-white flex items-center gap-1 transition-colors border border-netflixRed/30 hover:border-netflixRed px-2.5 py-0.5 rounded-full">
                   <span>✏️</span> Result is wrong / Adjust formula
                 </button>
               )}
