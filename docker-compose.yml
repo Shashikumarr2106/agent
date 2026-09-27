@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  # PostgreSQL with pgvector extension enabled (Section 18 & 42 of Flow.md)
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: agent_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-agent_db}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-agent_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Application service (FastAPI + LangGraph + MCP + Analysis SDK)
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: agent_backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - APP_ENV=production
+      - APP_HOST=0.0.0.0
+      - APP_PORT=8000
+      - DATABASE_URL=postgresql+psycopg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-agent_db}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - LLM_PROVIDER=${LLM_PROVIDER:-openai}
+      - EMBEDDING_PROVIDER=${EMBEDDING_PROVIDER:-openai}
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+
+volumes:
+  pgdata:
