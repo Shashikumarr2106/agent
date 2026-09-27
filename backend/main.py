@@ -1,23 +1,48 @@
 """Main application entry point configuring FastAPI, MCP, and HTTP routing."""
 import os
+import sys
 import json
 from pathlib import Path
+
+# Ensure project root is in sys.path so both direct execution and module execution work
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
 from typing import Any, Optional
-from .core.config import settings
-from .services.database import db_service
-from .services.skill_service import skill_service
-from .mcp import mcp_server
-from .api import (
-    handle_upload_csv,
-    handle_get_dataset,
-    handle_list_datasets,
-    handle_chat_request,
-    handle_approve_analysis,
-    handle_reject_analysis,
-    handle_get_job,
-    handle_feedback,
-    handle_get_session,
-)
+
+try:
+    from .core.config import settings
+    from .services.database import db_service
+    from .services.skill_service import skill_service
+    from .mcp import mcp_server
+    from .api import (
+        handle_upload_csv,
+        handle_get_dataset,
+        handle_list_datasets,
+        handle_chat_request,
+        handle_approve_analysis,
+        handle_reject_analysis,
+        handle_get_job,
+        handle_feedback,
+        handle_get_session,
+    )
+except (ImportError, ValueError):
+    from backend.core.config import settings
+    from backend.services.database import db_service
+    from backend.services.skill_service import skill_service
+    from backend.mcp import mcp_server
+    from backend.api import (
+        handle_upload_csv,
+        handle_get_dataset,
+        handle_list_datasets,
+        handle_chat_request,
+        handle_approve_analysis,
+        handle_reject_analysis,
+        handle_get_job,
+        handle_feedback,
+        handle_get_session,
+    )
 
 # Detect if FastAPI is available
 try:
@@ -219,10 +244,11 @@ def run_standalone_server(port: int = 8000):
                     self._send_json(404, {"error": "Endpoint Not Found"})
 
     server = HTTPServer(("0.0.0.0", port), AgentHTTPHandler)
-    print(f"🚀 AI Data Analyst Agent running at http://localhost:{port}")
+    print(f"🚀 AI Data Analyst Agent running at http://localhost:{port}", flush=True)
     server.serve_forever()
 
 if __name__ == "__main__":
+    print(f"⚡ Launching AI Data Analyst Agent on port {settings.APP_PORT}...", flush=True)
     if HAS_FASTAPI:
         import uvicorn
         uvicorn.run("backend.main:app", host=settings.APP_HOST, port=settings.APP_PORT, reload=settings.DEBUG)
