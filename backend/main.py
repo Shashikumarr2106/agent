@@ -2,7 +2,7 @@
 import os
 import json
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 from .core.config import settings
 from .services.database import db_service
 from .services.skill_service import skill_service

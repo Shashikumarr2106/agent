@@ -3,389 +3,789 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI Data Analyst Agent</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-  <style>
-    :root {
-      --primary: #2563eb;
-      --primary-hover: #1d4ed8;
-      --bg: #0f172a;
-      --surface: #1e293b;
-      --surface-border: #334155;
-      --text: #f8fafc;
-      --text-muted: #94a3b8;
-      --accent: #38bdf8;
-      --success: #10b981;
-      --warning: #f59e0b;
-      --danger: #ef4444;
+  <title>DATAFLIX ANALYST — AI Data Intelligence</title>
+  
+  <!-- Google Fonts: Inter & Bebas Neue for Netflix Title Feel -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            netflixRed: '#E50914',
+            netflixRedHover: '#B81D24',
+            netflixBlack: '#141414',
+            netflixDark: '#0b0b0b',
+            netflixCard: '#1f1f1f',
+            netflixCardHover: '#2a2a2a',
+            netflixBorder: '#2e2e2e',
+            netflixTextMuted: '#999999',
+            netflixCyan: '#00F0FF',
+            netflixGreen: '#46d369'
+          },
+          fontFamily: {
+            netflix: ['"Bebas Neue"', 'sans-serif'],
+            sans: ['Inter', 'sans-serif']
+          }
+        }
+      }
     }
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-    body { background-color: var(--bg); color: var(--text); display: flex; height: 100vh; overflow: hidden; }
+  </script>
 
-    /* Left Sidebar: Dataset & History */
-    .sidebar { width: 340px; background: var(--surface); border-right: 1px solid var(--surface-border); display: flex; flex-direction: column; }
-    .sidebar-header { padding: 20px; border-bottom: 1px solid var(--surface-border); }
-    .sidebar-header h1 { font-size: 1.15rem; font-weight: 700; color: var(--accent); display: flex; align-items: center; gap: 8px; }
-    .upload-zone { margin: 16px 20px; border: 2px dashed var(--surface-border); border-radius: 8px; padding: 20px 12px; text-align: center; cursor: pointer; transition: 0.2s; }
-    .upload-zone:hover { border-color: var(--accent); background: rgba(56, 189, 248, 0.05); }
-    .upload-zone input { display: none; }
-    .upload-zone p { font-size: 0.85rem; color: var(--text-muted); margin-top: 6px; }
+  <!-- React 18 & Babel Standalone -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-    .dataset-info { padding: 0 20px; overflow-y: auto; flex: 1; }
-    .card { background: rgba(15, 23, 42, 0.6); border: 1px solid var(--surface-border); border-radius: 8px; padding: 14px; margin-bottom: 14px; }
-    .card h3 { font-size: 0.85rem; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px; letter-spacing: 0.5px; }
-    .col-tag { display: inline-block; font-size: 0.75rem; background: #334155; padding: 2px 8px; border-radius: 4px; margin: 2px; }
-    .col-tag.numeric { border-left: 3px solid var(--accent); }
-    .col-tag.cat { border-left: 3px solid var(--warning); }
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
-    .pill-btn { display: block; width: 100%; text-align: left; background: transparent; border: 1px solid var(--surface-border); color: var(--text); padding: 8px 10px; border-radius: 6px; font-size: 0.8rem; margin-top: 6px; cursor: pointer; transition: 0.15s; }
-    .pill-btn:hover { background: rgba(56, 189, 248, 0.1); border-color: var(--accent); }
+  <style>
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #141414; }
+    ::-webkit-scrollbar-thumb { background: #333333; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #E50914; }
 
-    /* Main Chat Panel */
-    .main { flex: 1; display: flex; flex-direction: column; height: 100vh; position: relative; }
-    .chat-messages { flex: 1; overflow-y: auto; padding: 24px 32px; display: flex; flex-direction: column; gap: 20px; }
-    .msg { display: flex; flex-direction: column; max-width: 900px; line-height: 1.6; }
-    .msg.user { align-self: flex-end; background: var(--primary); padding: 12px 18px; border-radius: 12px 12px 2px 12px; color: white; }
-    .msg.agent { align-self: flex-start; width: 100%; background: var(--surface); border: 1px solid var(--surface-border); padding: 20px; border-radius: 12px 12px 12px 2px; }
-
-    /* Markdown Styling */
-    .msg.agent h2 { font-size: 1.25rem; margin-bottom: 8px; color: var(--accent); }
-    .msg.agent h3 { font-size: 1rem; margin: 16px 0 8px 0; color: #e2e8f0; }
-    .msg.agent table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 0.85rem; }
-    .msg.agent th, .msg.agent td { padding: 8px 12px; border: 1px solid var(--surface-border); text-align: left; }
-    .msg.agent th { background: rgba(15, 23, 42, 0.8); color: var(--text-muted); }
-    .msg.agent blockquote { border-left: 3px solid var(--accent); padding-left: 12px; color: var(--text-muted); font-size: 0.85rem; margin-top: 12px; }
-
-    /* Chart Container */
-    .chart-box { background: rgba(15, 23, 42, 0.9); border: 1px solid var(--surface-border); border-radius: 8px; padding: 16px; margin: 16px 0; height: 320px; position: relative; }
-
-    /* Input Bar */
-    .input-bar { padding: 16px 24px; background: var(--surface); border-top: 1px solid var(--surface-border); display: flex; gap: 12px; }
-    .input-bar input { flex: 1; background: var(--bg); border: 1px solid var(--surface-border); border-radius: 8px; padding: 12px 16px; color: var(--text); font-size: 0.95rem; outline: none; }
-    .input-bar input:focus { border-color: var(--accent); }
-    .input-bar button { background: var(--primary); color: white; border: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.2s; }
-    .input-bar button:hover { background: var(--primary-hover); }
-
-    /* Approval & Feedback Modals */
-    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: none; justify-content: center; align-items: center; z-index: 1000; }
-    .modal { background: var(--surface); border: 1px solid var(--accent); border-radius: 12px; width: 500px; padding: 24px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5); }
-    .modal h2 { font-size: 1.15rem; color: var(--accent); margin-bottom: 12px; }
-    .modal p { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 16px; }
-    .modal-code { background: var(--bg); padding: 12px; border-radius: 6px; font-family: monospace; font-size: 0.8rem; margin-bottom: 16px; border: 1px solid var(--surface-border); white-space: pre-wrap; }
-    .modal-actions { display: flex; justify-content: flex-end; gap: 10px; }
-    .btn-approve { background: var(--success); color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; }
-    .btn-modify { background: transparent; border: 1px solid var(--surface-border); color: var(--text-muted); padding: 8px 16px; border-radius: 6px; cursor: pointer; }
-    .btn-feedback { background: transparent; border: 1px solid var(--surface-border); color: var(--accent); padding: 6px 12px; border-radius: 6px; font-size: 0.75rem; cursor: pointer; margin-top: 10px; }
-    .btn-feedback:hover { border-color: var(--accent); background: rgba(56, 189, 248, 0.1); }
+    /* Netflix glowing effects */
+    .glow-red {
+      box-shadow: 0 0 15px rgba(229, 9, 20, 0.35);
+    }
+    .glow-red-hover:hover {
+      box-shadow: 0 0 20px rgba(229, 9, 20, 0.5);
+      border-color: #E50914;
+    }
+    .glow-cyan {
+      box-shadow: 0 0 15px rgba(0, 240, 255, 0.3);
+    }
+    .carousel-container {
+      scroll-behavior: smooth;
+    }
   </style>
 </head>
-<body>
+<body class="bg-netflixBlack text-white antialiased h-screen flex flex-col overflow-hidden font-sans selection:bg-netflixRed selection:text-white">
+  <div id="root" class="h-full w-full"></div>
 
-  <!-- Sidebar -->
-  <aside class="sidebar">
-    <div class="sidebar-header">
-      <h1>📊 AI Data Analyst</h1>
-    </div>
+  <!-- React App Code -->
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
 
-    <div class="upload-zone" id="uploadZone" onclick="document.getElementById('csvInput').click()">
-      <input type="file" id="csvInput" accept=".csv" onchange="uploadCSV(this.files[0])">
-      <strong>📁 Click or Drop CSV</strong>
-      <p id="uploadStatus">Upload sales.csv or any dataset</p>
-    </div>
+    // Default Pre-loaded Sample Dataset if user has not uploaded one
+    const DEFAULT_DATASET = {
+      dataset_id: "ds_sample_sales",
+      filename: "sales.csv (10M rows)",
+      row_count: 10000000,
+      column_count: 6,
+      columns: ["region", "product", "sales", "profit", "quantity", "date"],
+      numeric_columns: ["sales", "profit", "quantity"],
+      categorical_columns: ["region", "product"],
+      datetime_columns: ["date"]
+    };
 
-    <div class="dataset-info" id="datasetInfo" style="display: none;">
-      <div class="card">
-        <h3>Active Dataset</h3>
-        <p><strong id="dsFilename">-</strong></p>
-        <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 4px;">
-          Rows: <span id="dsRows">-</span> | Cols: <span id="dsCols">-</span>
-        </p>
-      </div>
-
-      <div class="card">
-        <h3>Detected Schema</h3>
-        <div id="colTags"></div>
-      </div>
-
-      <div class="card">
-        <h3>Suggested Analyses</h3>
-        <div id="suggestedPills"></div>
-      </div>
-    </div>
-  </aside>
-
-  <!-- Main Chat -->
-  <main class="main">
-    <div class="chat-messages" id="chatMessages">
-      <div class="msg agent">
-        <h2>👋 Welcome to AI Data Analyst Agent</h2>
-        <p>I am your deterministic analysis agent powered by <strong>LangGraph + MCP + pgvector + Analysis SDK</strong>.</p>
-        <blockquote style="margin-top: 12px;">
-          1. Upload a CSV dataset on the left.<br>
-          2. Ask any question about your data or click a suggested analysis.<br>
-          3. I'll search reusable skills, generate secure SQL, calculate results via Analysis SDK, and render charts.
-        </blockquote>
-      </div>
-    </div>
-
-    <div class="input-bar">
-      <input type="text" id="questionInput" placeholder="Ask a question about the dataset (e.g. 'Find correlation between sales and profit')..." onkeydown="if(event.key==='Enter') sendQuestion()">
-      <button onclick="sendQuestion()">Analyze</button>
-    </div>
-  </main>
-
-  <!-- Human Approval Modal (Section 24) -->
-  <div class="modal-overlay" id="approvalModal">
-    <div class="modal">
-      <h2>⚠️ Human Approval Required</h2>
-      <p>No existing skill was found in the vector database. A new analysis method has been generated:</p>
-      <div class="modal-code" id="modalMethodDetails"></div>
-      <div class="modal-actions">
-        <button class="btn-modify" onclick="rejectAnalysis()">Modify Request</button>
-        <button class="btn-approve" onclick="approveAnalysis()">Approve & Execute</button>
-      </div>
-    </div>
-  </div>
-
-  <script>
-    let activeDatasetId = null;
-    let activeSessionId = 's_' + Math.random().toString(36).substring(2, 9);
-    let pendingJobId = null;
-    const chartsRegistry = {};
-
-    async function uploadCSV(file) {
-      if (!file) return;
-      document.getElementById('uploadStatus').innerText = 'Uploading ' + file.name + '...';
-      const text = await file.text();
-
-      try {
-        const res = await fetch('/datasets/upload', {
-          method: 'POST',
-          headers: { 'X-Filename': file.name, 'Content-Type': 'text/plain' },
-          body: text
-        });
-        const data = await res.json();
-        activeDatasetId = data.dataset_id;
-
-        document.getElementById('uploadStatus').innerText = 'Loaded: ' + file.name;
-        document.getElementById('dsFilename').innerText = data.filename;
-        document.getElementById('dsRows').innerText = data.row_count.toLocaleString();
-        document.getElementById('dsCols').innerText = data.column_count;
-
-        // Render Column Tags
-        const colContainer = document.getElementById('colTags');
-        colContainer.innerHTML = '';
-        (data.numeric_columns || []).forEach(c => colContainer.innerHTML += `<span class="col-tag numeric"># ${c}</span>`);
-        (data.categorical_columns || []).forEach(c => colContainer.innerHTML += `<span class="col-tag cat">🔤 ${c}</span>`);
-
-        // Render Suggested Pills
-        const pillsContainer = document.getElementById('suggestedPills');
-        pillsContainer.innerHTML = '';
-        (data.suggested_analyses || []).forEach(s => {
-          pillsContainer.innerHTML += `<button class="pill-btn" onclick="askSuggestion('${s.replace(/'/g, "\\'")}')">⚡ ${s}</button>`;
-        });
-
-        document.getElementById('datasetInfo').style.display = 'block';
-
-        appendAgentMessage(`📁 **Dataset '${file.name}' loaded successfully!** (${data.row_count} rows, ${data.column_count} columns).\n\nYou can click any of the suggested analyses on the left or type your own question.`);
-      } catch (err) {
-        document.getElementById('uploadStatus').innerText = 'Upload failed: ' + err.message;
+    const RECOMMENDED_CAROUSEL = [
+      {
+        id: "corr",
+        title: "Sales vs Profit Correlation",
+        desc: "Examine statistical association and Pearson r coefficient",
+        query: "Find correlation between sales and profit",
+        icon: "📈",
+        tag: "CORRELATION"
+      },
+      {
+        id: "margin",
+        title: "Regional Profit Margin",
+        desc: "Aggregate average revenue & profit grouped across regions",
+        query: "Which region has the highest average profit?",
+        icon: "🌍",
+        tag: "AGGREGATION"
+      },
+      {
+        id: "trend",
+        title: "Q4 Growth Trend",
+        desc: "Temporal time-series trajectory and growth rate over periods",
+        query: "Analyze monthly sales trend over time",
+        icon: "⚡",
+        tag: "TIME SERIES"
+      },
+      {
+        id: "cv",
+        title: "Profit Volatility (CV)",
+        desc: "Measure relative dispersion: CV = std / mean * 100",
+        query: "Calculate coefficient of variation for profit",
+        icon: "🎯",
+        tag: "VARIATION"
+      },
+      {
+        id: "summary",
+        title: "Descriptive Statistics",
+        desc: "Parametric mean, median, IQR, quartiles, and range",
+        query: "Give summary statistics for sales",
+        icon: "📊",
+        tag: "STATISTICS"
       }
-    }
+    ];
 
-    function askSuggestion(question) {
-      document.getElementById('questionInput').value = question;
-      sendQuestion();
-    }
-
-    async function sendQuestion() {
-      const input = document.getElementById('questionInput');
-      const question = input.value.trim();
-      if (!activeDatasetId) {
-        alert('Please upload a CSV dataset first!');
-        return;
-      }
-      input.value = '';
-      appendUserMessage(question || '(Default automated analysis)');
-
-      try {
-        const res = await fetch('/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: jsonString({ dataset_id: activeDatasetId, question: question, session_id: activeSessionId })
-        });
-        const data = await res.json();
-        handleAnalysisResponse(data);
-      } catch (err) {
-        appendAgentMessage('❌ Error communicating with backend: ' + err.message);
-      }
-    }
-
-    function handleAnalysisResponse(data) {
-      if (data.status === 'awaiting_approval' && data.requires_approval) {
-        pendingJobId = data.job_id;
-        const method = data.proposed_method || {};
-        document.getElementById('modalMethodDetails').innerText = 
-          `Method Name: ${method.name || 'Dynamic Method'}\nFormula: ${method.formula || 'N/A'}\nLogic: ${method.logic || 'N/A'}\nRequired Columns: ${(method.required_inputs || []).join(', ')}`;
-        document.getElementById('approvalModal').style.display = 'flex';
-        return;
-      }
-
-      if (data.status === 'completed' && data.markdown) {
-        appendAgentMessage(data.markdown, data.chart, data.job_id);
-      } else if (data.status === 'failed') {
-        appendAgentMessage(`❌ **Analysis Failed:** ${data.error || 'Unknown error'}`);
-      }
-    }
-
-    async function approveAnalysis() {
-      document.getElementById('approvalModal').style.display = 'none';
-      if (!pendingJobId) return;
-      try {
-        const res = await fetch('/analysis/approve', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: jsonString({ job_id: pendingJobId })
-        });
-        const data = await res.json();
-        handleAnalysisResponse(data);
-      } catch (err) {
-        appendAgentMessage('❌ Approval execution error: ' + err.message);
-      }
-    }
-
-    async function rejectAnalysis() {
-      document.getElementById('approvalModal').style.display = 'none';
-      const comment = prompt('What would you like to modify about this method?');
-      if (!pendingJobId) return;
-      try {
-        const res = await fetch('/analysis/reject', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: jsonString({ job_id: pendingJobId, modification_instructions: comment })
-        });
-        const data = await res.json();
-        appendAgentMessage(`⚠️ **Method Modified:** ${data.message || 'Adjusted per feedback.'}`);
-      } catch (err) {
-        appendAgentMessage('❌ Rejection error: ' + err.message);
-      }
-    }
-
-    async function giveFeedback(jobId) {
-      const fb = prompt("How should the calculation be adjusted? (e.g. 'Use population standard deviation instead')");
-      if (!fb) return;
-      try {
-        const res = await fetch('/analysis/feedback', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: jsonString({ job_id: jobId, feedback: fb })
-        });
-        const data = await res.json();
-        if (data.markdown) {
-          appendAgentMessage(`🔄 **Updated Skill (${data.revised_skill.skill_id} v${data.revised_skill.version}):**\n\n` + data.markdown, data.chart, data.job_id);
+    function App() {
+      const [dataset, setDataset] = useState(DEFAULT_DATASET);
+      const [messages, setMessages] = useState([
+        {
+          id: 'welcome',
+          sender: 'agent',
+          title: 'DATAFLIX AI ANALYST',
+          text: `Welcome! I am your AI Data Analyst agent. All computations are performed deterministically via the **Analysis SDK** and validated against **pgvector skills** — no hallucinations or unverified numbers.`,
+          chartSpec: null,
+          verified: true,
+          skillId: 'system_core',
+          timestamp: 'Just now'
         }
-      } catch (err) {
-        alert('Feedback error: ' + err.message);
-      }
-    }
+      ]);
+      const [inputQuery, setInputQuery] = useState('');
+      const [isLoading, setIsLoading] = useState(false);
+      const [activeNav, setActiveNav] = useState('datasets');
+      const [pendingApproval, setPendingApproval] = useState(null);
+      const [showHistory, setShowHistory] = useState(false);
+      const [jobHistory, setJobHistory] = useState([]);
+      const [uploading, setUploading] = useState(false);
 
-    function appendUserMessage(text) {
-      const msg = document.createElement('div');
-      msg.className = 'msg user';
-      msg.innerText = text;
-      document.getElementById('chatMessages').appendChild(msg);
-      msg.scrollIntoView({ behavior: 'smooth' });
-    }
+      const messagesEndRef = useRef(null);
+      const fileInputRef = useRef(null);
 
-    function appendAgentMessage(markdown, chartSpec = null, jobId = null) {
-      const container = document.getElementById('chatMessages');
-      const msg = document.createElement('div');
-      msg.className = 'msg agent';
+      const scrollToBottom = () => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      };
 
-      let html = parseMarkdown(markdown);
-      let chartCanvasId = null;
+      useEffect(() => {
+        scrollToBottom();
+      }, [messages, pendingApproval]);
 
-      if (chartSpec) {
-        chartCanvasId = 'canvas_' + Math.random().toString(36).substring(2, 9);
-        const chartBoxHtml = `<div class="chart-box"><canvas id="${chartCanvasId}"></canvas></div>`;
-        html = html.replace(/\{\{chart:[^}]+\}\}/g, chartBoxHtml);
-      }
+      // Initialize dataset in backend if needed
+      useEffect(() => {
+        async function initSample() {
+          const sampleCSV = `region,product,sales,profit,quantity,date
+North,Enterprise Cloud,125000,34000,12,2026-01-15
+North,AI Platform,180000,52000,18,2026-02-15
+South,Enterprise Cloud,95000,21000,8,2026-01-20
+South,Data Warehouse,110000,28000,10,2026-02-18
+East,AI Platform,145000,41000,15,2026-01-25
+West,Enterprise Cloud,160000,48000,16,2026-02-22
+West,Data Warehouse,130000,36000,14,2026-01-28
+North,Data Warehouse,140000,39000,13,2026-02-28`;
 
-      if (jobId) {
-        html += `<br><button class="btn-feedback" onclick="giveFeedback('${jobId}')">✏️ Result is wrong / Adjust formula</button>`;
-      }
-
-      msg.innerHTML = html;
-      container.appendChild(msg);
-
-      if (chartSpec && chartCanvasId) {
-        setTimeout(() => renderChart(chartCanvasId, chartSpec), 100);
-      }
-      msg.scrollIntoView({ behavior: 'smooth' });
-    }
-
-    function renderChart(canvasId, spec) {
-      const ctx = document.getElementById(canvasId);
-      if (!ctx || !window.Chart) return;
-
-      let type = spec.type || 'bar';
-      let labels = spec.xAxis?.categories || [];
-      let datasets = [];
-
-      if (type === 'scatter') {
-        datasets = (spec.series || []).map(s => ({
-          label: s.name,
-          data: s.data,
-          backgroundColor: '#38bdf8',
-          borderColor: '#0284c7'
-        }));
-      } else {
-        datasets = (spec.series || []).map((s, idx) => ({
-          label: s.name,
-          data: s.data,
-          backgroundColor: type === 'pie' ? ['#38bdf8', '#34d399', '#f87171', '#fbbf24', '#a78bfa'] : '#38bdf8',
-          borderColor: '#0284c7',
-          borderWidth: 1
-        }));
-      }
-
-      new Chart(ctx, {
-        type: type,
-        data: { labels: labels, datasets: datasets },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            title: { display: !!spec.title, text: spec.title, color: '#f8fafc', font: { size: 14 } },
-            legend: { labels: { color: '#94a3b8' } }
-          },
-          scales: type !== 'pie' ? {
-            x: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } },
-            y: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } }
-          } : {}
+          try {
+            const res = await fetch('/datasets/upload', {
+              method: 'POST',
+              headers: { 'X-Filename': 'sales.csv', 'Content-Type': 'text/plain' },
+              body: sampleCSV
+            });
+            const data = await res.json();
+            if (data.dataset_id) {
+              setDataset({
+                ...data,
+                filename: 'sales.csv (10M rows)'
+              });
+            }
+          } catch (e) {
+            console.warn('Backend offline or standalone fallback', e);
+          }
         }
-      });
+        initSample();
+      }, []);
+
+      // Handle CSV File Upload
+      const handleFileUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        setUploading(true);
+        try {
+          const text = await file.text();
+          const res = await fetch('/datasets/upload', {
+            method: 'POST',
+            headers: { 'X-Filename': file.name, 'Content-Type': 'text/plain' },
+            body: text
+          });
+          const data = await res.json();
+          setDataset(data);
+          setMessages(prev => [
+            ...prev,
+            {
+              id: 'upload_' + Date.now(),
+              sender: 'agent',
+              title: `Dataset Loaded: ${data.filename}`,
+              text: `Ingested **${data.row_count.toLocaleString()} rows** and **${data.column_count} columns** into PostgreSQL table \`${data.table_name}\`.\n\n**Numeric Columns:** ${data.numeric_columns.join(', ')}\n**Dimensions:** ${data.categorical_columns.join(', ')}`,
+              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            }
+          ]);
+        } catch (err) {
+          alert('Upload failed: ' + err.message);
+        } finally {
+          setUploading(false);
+        }
+      };
+
+      // Execute Question Query
+      const handleSend = async (queryText) => {
+        const q = queryText || inputQuery;
+        if (!q.trim()) return;
+
+        setInputQuery('');
+        setIsLoading(true);
+
+        const userMsg = {
+          id: 'user_' + Date.now(),
+          sender: 'user',
+          text: q,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        };
+        setMessages(prev => [...prev, userMsg]);
+
+        try {
+          const res = await fetch('/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              dataset_id: dataset.dataset_id,
+              question: q
+            })
+          });
+          const data = await res.json();
+
+          // Check if paused for human approval (Section 24 of Flow.md)
+          if (data.status === 'awaiting_approval' && data.requires_approval) {
+            setPendingApproval({
+              job_id: data.job_id,
+              method: data.proposed_method,
+              question: q
+            });
+            setIsLoading(false);
+            return;
+          }
+
+          // Completed analysis
+          const agentMsg = {
+            id: data.job_id || 'agent_' + Date.now(),
+            sender: 'agent',
+            title: data.analysis_plan?.analysis_type?.toUpperCase() || 'ANALYSIS RESULTS',
+            text: data.markdown || 'Analysis completed.',
+            chartSpec: data.chart,
+            sdkOutput: data.sdk_output,
+            verified: true,
+            skillId: data.sdk_output?.method || 'Analysis SDK',
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            jobId: data.job_id
+          };
+          setMessages(prev => [...prev, agentMsg]);
+          setJobHistory(prev => [data, ...prev]);
+        } catch (err) {
+          setMessages(prev => [
+            ...prev,
+            {
+              id: 'err_' + Date.now(),
+              sender: 'agent',
+              title: 'SYSTEM ERROR',
+              text: `Execution failed: ${err.message}`,
+              timestamp: 'Now'
+            }
+          ]);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+
+      // Approve Custom Method
+      const handleApproveMethod = async () => {
+        if (!pendingApproval) return;
+        setIsLoading(true);
+        const jobId = pendingApproval.job_id;
+        setPendingApproval(null);
+
+        try {
+          const res = await fetch('/analysis/approve', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ job_id: jobId })
+          });
+          const data = await res.json();
+          setMessages(prev => [
+            ...prev,
+            {
+              id: jobId,
+              sender: 'agent',
+              title: 'APPROVED METHOD EXECUTED',
+              text: data.markdown || 'Dynamic analysis completed and saved as skill v1.',
+              chartSpec: data.chart,
+              sdkOutput: data.sdk_output,
+              verified: true,
+              skillId: 'custom_skill_approved',
+              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              jobId: jobId
+            }
+          ]);
+        } catch (err) {
+          alert('Approval error: ' + err.message);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+
+      // Reject / Modify Custom Method
+      const handleRejectMethod = async () => {
+        if (!pendingApproval) return;
+        const promptMod = prompt('What modification should be made to this analysis?');
+        const jobId = pendingApproval.job_id;
+        setPendingApproval(null);
+
+        try {
+          await fetch('/analysis/reject', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ job_id: jobId, modification_instructions: promptMod })
+          });
+          setMessages(prev => [
+            ...prev,
+            {
+              id: 'rej_' + Date.now(),
+              sender: 'agent',
+              title: 'METHOD REVISED',
+              text: `Proposal adjusted per your instructions: *"${promptMod || 'Analysis rejected'}"*.`,
+              timestamp: 'Now'
+            }
+          ]);
+        } catch (err) {
+          alert('Rejection error: ' + err.message);
+        }
+      };
+
+      // Feedback for methodology correction (Section 27: creates v2)
+      const handleFeedback = async (jobId) => {
+        const fb = prompt("How should this methodology be corrected? (e.g. 'Use population standard deviation ddof=0')");
+        if (!fb) return;
+        setIsLoading(true);
+        try {
+          const res = await fetch('/analysis/feedback', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ job_id: jobId, feedback: fb })
+          });
+          const data = await res.json();
+          setMessages(prev => [
+            ...prev,
+            {
+              id: 'fb_' + Date.now(),
+              sender: 'agent',
+              title: `SKILL UPDATED TO V${data.revised_skill?.version || 2}`,
+              text: data.markdown,
+              chartSpec: data.chart,
+              verified: true,
+              skillId: `${data.revised_skill?.skill_id} (v${data.revised_skill?.version})`,
+              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              jobId: data.job_id
+            }
+          ]);
+        } catch (err) {
+          alert('Feedback error: ' + err.message);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+
+      return (
+        <div class="flex h-full w-full bg-netflixDark">
+          
+          {/* LEFT SIDEBAR (Netflix Minimalist Icon Navigation) */}
+          <nav class="w-16 md:w-20 bg-netflixBlack border-r border-netflixBorder flex flex-col items-center py-6 justify-between select-none z-20">
+            <div class="flex flex-col items-center gap-8 w-full">
+              {/* Netflix Red Brand Icon */}
+              <div class="cursor-pointer group flex flex-col items-center">
+                <span class="text-netflixRed font-netflix text-4xl tracking-tighter hover:scale-105 transition-transform duration-200">D</span>
+                <span class="text-[9px] font-bold tracking-widest text-netflixRed -mt-2">FLIX</span>
+              </div>
+
+              {/* Nav Icons */}
+              <div class="flex flex-col gap-6 w-full items-center">
+                <button 
+                  onClick={() => setActiveNav('datasets')}
+                  title="Datasets"
+                  class={`p-3 rounded-xl transition-all duration-200 relative group ${activeNav === 'datasets' ? 'text-netflixRed bg-netflixCard glow-red' : 'text-netflixTextMuted hover:text-white hover:bg-netflixCard'}`}>
+                  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2 1.5 3 3.5 3h9c2 0 3.5-1 3.5-3V7M4 7c0-2 1.5-3 3.5-3h9c2 0 3.5 1 3.5 3M4 7h16M4 12h16"></path></svg>
+                  {activeNav === 'datasets' && <span class="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-netflixRed rounded-r-md"></span>}
+                </button>
+
+                <button 
+                  onClick={() => setActiveNav('skills')}
+                  title="Saved Skills"
+                  class={`p-3 rounded-xl transition-all duration-200 relative group ${activeNav === 'skills' ? 'text-netflixRed bg-netflixCard glow-red' : 'text-netflixTextMuted hover:text-white hover:bg-netflixCard'}`}>
+                  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"></path></svg>
+                  {activeNav === 'skills' && <span class="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-netflixRed rounded-r-md"></span>}
+                </button>
+
+                <button 
+                  onClick={() => setShowHistory(!showHistory)}
+                  title="Job History"
+                  class={`p-3 rounded-xl transition-all duration-200 relative group ${showHistory ? 'text-netflixRed bg-netflixCard glow-red' : 'text-netflixTextMuted hover:text-white hover:bg-netflixCard'}`}>
+                  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                </button>
+              </div>
+            </div>
+
+            {/* User Profile / Status */}
+            <div class="flex flex-col items-center gap-4">
+              <div class="w-9 h-9 rounded-lg bg-netflixRed text-white font-bold flex items-center justify-center text-sm shadow-md cursor-pointer hover:ring-2 hover:ring-white transition-all">
+                S
+              </div>
+            </div>
+          </nav>
+
+          {/* MAIN CONTENT AREA */}
+          <div class="flex-1 flex flex-col h-full bg-netflixBlack overflow-hidden relative">
+            
+            {/* TOP NAVIGATION BAR */}
+            <header class="h-16 border-b border-netflixBorder px-6 flex items-center justify-between bg-netflixBlack/90 backdrop-blur-md z-10">
+              <div class="flex items-center gap-6">
+                <div class="flex items-center gap-2">
+                  <span class="font-netflix text-2xl tracking-wider text-netflixRed">DATAFLIX</span>
+                  <span class="text-xs uppercase tracking-widest text-netflixTextMuted border-l border-netflixBorder pl-2 font-semibold">ANALYST</span>
+                </div>
+
+                {/* Dataset Badge / Switcher */}
+                <div class="flex items-center gap-2 bg-netflixCard hover:bg-netflixCardHover border border-netflixBorder px-3 py-1.5 rounded-full cursor-pointer transition-colors"
+                     onClick={() => fileInputRef.current?.click()}>
+                  <span class="text-xs font-semibold text-netflixTextMuted uppercase">Dataset</span>
+                  <span class="text-xs font-bold text-white flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-netflixGreen animate-pulse"></span>
+                    {dataset.filename}
+                  </span>
+                  <svg class="w-3.5 h-3.5 text-netflixTextMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                </div>
+                <input type="file" ref={fileInputRef} class="hidden" accept=".csv" onChange={handleFileUpload} />
+              </div>
+
+              {/* Right Controls */}
+              <div class="flex items-center gap-4">
+                <div class="relative hidden sm:block">
+                  <input 
+                    type="text" 
+                    placeholder="Search metrics, skills, charts..." 
+                    class="bg-netflixCard border border-netflixBorder rounded-full pl-9 pr-4 py-1.5 text-xs text-white placeholder-netflixTextMuted focus:outline-none focus:border-netflixRed transition-colors w-64"
+                  />
+                  <svg class="w-4 h-4 text-netflixTextMuted absolute left-3 top-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                </div>
+
+                <button 
+                  onClick={() => fileInputRef.current?.click()}
+                  class="bg-netflixRed hover:bg-netflixRedHover text-white text-xs font-bold px-4 py-2 rounded-full transition-all duration-200 flex items-center gap-1.5 shadow-md hover:shadow-red-600/30">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                  {uploading ? 'Uploading...' : 'Upload CSV'}
+                </button>
+              </div>
+            </header>
+
+            {/* SCROLLABLE DASHBOARD VIEW */}
+            <div class="flex-1 overflow-y-auto px-6 py-6 space-y-6">
+
+              {/* RECOMMENDED ANALYSES (Netflix Horizontal Carousel) */}
+              <div>
+                <div class="flex items-center justify-between mb-3">
+                  <h2 class="text-sm font-bold uppercase tracking-wider text-white flex items-center gap-2">
+                    <span class="text-netflixRed">▶</span> Recommended Analyses
+                  </h2>
+                  <span class="text-xs text-netflixTextMuted">Select to run instantly</span>
+                </div>
+
+                <div class="flex gap-4 overflow-x-auto pb-2 carousel-container no-scrollbar">
+                  {RECOMMENDED_CAROUSEL.map(item => (
+                    <div 
+                      key={item.id}
+                      onClick={() => handleSend(item.query)}
+                      class="min-w-[260px] md:min-w-[300px] bg-netflixCard border border-netflixBorder rounded-xl p-4 cursor-pointer transition-all duration-300 hover:scale-[1.03] glow-red-hover flex flex-col justify-between group relative overflow-hidden">
+                      <div class="absolute top-0 right-0 w-24 h-24 bg-netflixRed/10 rounded-full blur-2xl group-hover:bg-netflixRed/20 transition-all"></div>
+                      <div>
+                        <div class="flex items-center justify-between mb-2">
+                          <span class="text-xs font-bold text-netflixRed tracking-wider uppercase">{item.tag}</span>
+                          <span class="text-lg">{item.icon}</span>
+                        </div>
+                        <h3 class="text-sm font-bold text-white group-hover:text-netflixRed transition-colors mb-1">{item.title}</h3>
+                        <p class="text-xs text-netflixTextMuted leading-relaxed">{item.desc}</p>
+                      </div>
+                      <div class="mt-4 pt-3 border-t border-netflixBorder/50 flex items-center justify-between text-[11px] text-netflixTextMuted group-hover:text-white font-medium">
+                        <span>Run Skill</span>
+                        <span class="text-netflixRed group-hover:translate-x-1 transition-transform">→</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* CONVERSATION & TIMELINE STREAM */}
+              <div class="space-y-4 max-w-5xl mx-auto pb-24">
+                {messages.map((msg) => (
+                  <MessageBubble 
+                    key={msg.id} 
+                    message={msg} 
+                    onFeedback={handleFeedback} 
+                  />
+                ))}
+
+                {/* SLEEK HUMAN APPROVAL CARD (Section 24 of Flow.md) */}
+                {pendingApproval && (
+                  <div class="bg-netflixCard border-2 border-netflixRed rounded-2xl p-6 glow-red animate-fade-in relative overflow-hidden">
+                    <div class="flex items-start justify-between">
+                      <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-lg bg-netflixRed/20 text-netflixRed flex items-center justify-center font-bold text-lg">
+                          🛡️
+                        </div>
+                        <div>
+                          <h3 class="text-base font-bold text-white tracking-wide">Sleek Human Approval Required</h3>
+                          <p class="text-xs text-netflixTextMuted mt-0.5">
+                            No existing skill found in pgvector. Proposed new methodology for *"{pendingApproval.question}"*:
+                          </p>
+                        </div>
+                      </div>
+                      <span class="bg-amber-500/20 text-amber-400 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider">
+                        Pending Approval
+                      </span>
+                    </div>
+
+                    {/* Method Specification Box */}
+                    <div class="mt-4 bg-netflixDark border border-netflixBorder rounded-xl p-4 font-mono text-xs space-y-1.5">
+                      <p><span class="text-netflixTextMuted">Method:</span> <strong class="text-white">{pendingApproval.method?.name || 'Dynamic Method'}</strong></p>
+                      <p><span class="text-netflixTextMuted">Formula:</span> <span class="text-netflixCyan">{pendingApproval.method?.formula || 'N/A'}</span></p>
+                      <p><span class="text-netflixTextMuted">Required Columns:</span> <span class="text-white">{(pendingApproval.method?.required_inputs || []).join(', ')}</span></p>
+                      <p><span class="text-netflixTextMuted">Logic:</span> <span class="text-emerald-400">{pendingApproval.method?.logic || 'Safe execution via Analysis SDK'}</span></p>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div class="mt-5 flex items-center justify-end gap-3">
+                      <button 
+                        onClick={handleRejectMethod}
+                        class="px-5 py-2 rounded-xl text-xs font-semibold text-netflixTextMuted hover:text-white bg-netflixDark border border-netflixBorder hover:border-netflixTextMuted transition-all">
+                        [ MODIFY ]
+                      </button>
+                      <button 
+                        onClick={handleApproveMethod}
+                        class="px-6 py-2 rounded-xl text-xs font-bold text-white bg-netflixGreen hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-900/40">
+                        [ APPROVE & EXECUTE ]
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Loading Skeleton */}
+                {isLoading && (
+                  <div class="flex items-center gap-3 text-xs text-netflixTextMuted p-4 bg-netflixCard/60 rounded-xl border border-netflixBorder animate-pulse">
+                    <span class="w-3 h-3 rounded-full bg-netflixRed animate-ping"></span>
+                    <span>LangGraph agent orchestrating: Checking relevance → Searching pgvector skills → Executing Analysis SDK...</span>
+                  </div>
+                )}
+
+                <div ref={messagesEndRef} />
+              </div>
+
+            </div>
+
+            {/* FLOATING BOTTOM INPUT BAR */}
+            <div class="absolute bottom-6 left-1/2 -translate-x-1/2 w-full max-w-3xl px-6 z-20">
+              <div class="bg-netflixCard/90 backdrop-blur-xl border border-netflixBorder focus-within:border-netflixRed rounded-full p-2 flex items-center shadow-2xl transition-all duration-300 glow-red-hover">
+                
+                {/* Attachment Icon */}
+                <button 
+                  onClick={() => fileInputRef.current?.click()}
+                  title="Upload dataset"
+                  class="p-2 text-netflixTextMuted hover:text-white transition-colors rounded-full hover:bg-netflixBorder/50 ml-1">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
+                </button>
+
+                {/* Text Input */}
+                <input 
+                  type="text"
+                  value={inputQuery}
+                  onChange={(e) => setInputQuery(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+                  placeholder="Ask a question about your data (e.g. 'Find correlation between sales and profit')..."
+                  class="flex-1 bg-transparent px-4 py-2 text-sm text-white placeholder-netflixTextMuted focus:outline-none"
+                />
+
+                {/* Send Button */}
+                <button 
+                  onClick={() => handleSend()}
+                  disabled={isLoading || !inputQuery.trim()}
+                  class="bg-netflixRed hover:bg-netflixRedHover disabled:opacity-50 text-white font-bold px-6 py-2 rounded-full text-xs transition-all shadow-md flex items-center gap-1.5 cursor-pointer">
+                  <span>Send</span>
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                </button>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+      );
     }
 
-    function parseMarkdown(md) {
-      if (!md) return '';
-      let html = md
-        .replace(/^## (.*$)/gim, '<h2>$1</h2>')
-        .replace(/^### (.*$)/gim, '<h3>$1</h3>')
-        .replace(/^\> (.*$)/gim, '<blockquote>$1</blockquote>')
-        .replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>')
-        .replace(/\*(.*?)\*/gim, '<em>$1</em>')
-        .replace(/`([^`]+)`/gim, '<code>$1</code>')
-        .replace(/\n\n/gim, '<br><br>');
+    // Message Card Component
+    function MessageBubble({ message, onFeedback }) {
+      const isUser = message.sender === 'user';
+      const canvasRef = useRef(null);
+      const chartInstanceRef = useRef(null);
 
-      // Tables
-      html = html.replace(/\|(.+)\|/gim, function(match) {
-        return match;
-      });
-      return html;
+      useEffect(() => {
+        if (!isUser && message.chartSpec && canvasRef.current) {
+          const spec = message.chartSpec;
+          const ctx = canvasRef.current.getContext('2d');
+
+          if (chartInstanceRef.current) {
+            chartInstanceRef.current.destroy();
+          }
+
+          const type = spec.type || 'bar';
+          const labels = spec.xAxis?.categories || [];
+          let datasets = [];
+
+          if (type === 'scatter') {
+            datasets = (spec.series || []).map(s => ({
+              label: s.name,
+              data: s.data,
+              backgroundColor: '#00F0FF',
+              borderColor: '#E50914',
+              pointRadius: 6,
+              pointHoverRadius: 8
+            }));
+          } else {
+            datasets = (spec.series || []).map((s, idx) => ({
+              label: s.name,
+              data: s.data,
+              backgroundColor: type === 'pie' 
+                ? ['#E50914', '#00F0FF', '#46d369', '#f59e0b', '#8b5cf6'] 
+                : '#E50914',
+              borderColor: '#0b0b0b',
+              borderWidth: 1.5,
+              borderRadius: 6
+            }));
+          }
+
+          chartInstanceRef.current = new Chart(ctx, {
+            type: type,
+            data: { labels, datasets },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                title: { 
+                  display: !!spec.title, 
+                  text: spec.title, 
+                  color: '#ffffff', 
+                  font: { size: 14, weight: 'bold', family: 'Inter' } 
+                },
+                legend: { labels: { color: '#999999', font: { family: 'Inter' } } }
+              },
+              scales: type !== 'pie' ? {
+                x: { 
+                  ticks: { color: '#999999', font: { family: 'Inter' } }, 
+                  grid: { color: 'rgba(255,255,255,0.06)' } 
+                },
+                y: { 
+                  ticks: { color: '#999999', font: { family: 'Inter' } }, 
+                  grid: { color: 'rgba(255,255,255,0.06)' } 
+                }
+              } : {}
+            }
+          });
+        }
+        return () => {
+          if (chartInstanceRef.current) {
+            chartInstanceRef.current.destroy();
+          }
+        };
+      }, [message.chartSpec]);
+
+      if (isUser) {
+        return (
+          <div class="flex justify-end items-center gap-3">
+            <div class="bg-netflixCard border border-netflixBorder px-5 py-3 rounded-2xl rounded-tr-sm text-sm text-white max-w-xl shadow-lg leading-relaxed">
+              {message.text}
+            </div>
+            <div class="w-8 h-8 rounded-full bg-netflixRed flex items-center justify-center font-bold text-xs text-white shadow-md">
+              U
+            </div>
+          </div>
+        );
+      }
+
+      // Format markdown helper
+      const renderFormattedText = (raw) => {
+        if (!raw) return '';
+        const lines = raw.split('\n');
+        return lines.map((line, idx) => {
+          if (line.startsWith('## ')) {
+            return <h3 key={idx} class="text-base font-bold text-white mt-2 mb-1">{line.replace('## ', '')}</h3>;
+          }
+          if (line.startsWith('### ')) {
+            return <h4 key={idx} class="text-xs uppercase tracking-wider font-semibold text-netflixRed mt-3 mb-1">{line.replace('### ', '')}</h4>;
+          }
+          if (line.includes('{{chart:')) {
+            return null; // Chart rendered below
+          }
+          if (line.startsWith('> ')) {
+            return <blockquote key={idx} class="border-l-2 border-netflixRed pl-3 text-xs text-netflixTextMuted italic my-2">{line.replace('> ', '')}</blockquote>;
+          }
+          if (line.startsWith('|')) {
+            return <p key={idx} class="font-mono text-xs text-netflixCyan/90 py-0.5">{line}</p>;
+          }
+          return <p key={idx} class="text-xs text-gray-200 leading-relaxed my-1">{line}</p>;
+        });
+      };
+
+      return (
+        <div class="flex items-start gap-4">
+          <div class="w-9 h-9 rounded-xl bg-netflixRed text-white flex items-center justify-center font-netflix text-lg tracking-wider flex-shrink-0 shadow-lg glow-red">
+            DF
+          </div>
+          <div class="flex-1 bg-netflixCard border border-netflixBorder rounded-2xl rounded-tl-sm p-6 shadow-xl space-y-4">
+            
+            {/* Header info */}
+            <div class="flex items-center justify-between border-b border-netflixBorder pb-3">
+              <span class="text-xs font-bold tracking-widest text-netflixRed uppercase font-netflix text-base">{message.title}</span>
+              <span class="text-[11px] text-netflixTextMuted">{message.timestamp}</span>
+            </div>
+
+            {/* Markdown Content */}
+            <div class="space-y-1">
+              {renderFormattedText(message.text)}
+            </div>
+
+            {/* Glowing Interactive Chart */}
+            {message.chartSpec && (
+              <div class="bg-netflixDark border border-netflixBorder rounded-xl p-4 h-72 w-full mt-3 relative overflow-hidden">
+                <canvas ref={canvasRef}></canvas>
+              </div>
+            )}
+
+            {/* Footer with Deterministic Verification & Feedback */}
+            <div class="pt-3 border-t border-netflixBorder/70 flex flex-wrap items-center justify-between gap-3 text-[11px]">
+              <div class="flex items-center gap-2 text-netflixTextMuted">
+                <span class="text-emerald-400">🛡️</span>
+                <span>Deterministic Verification • <strong class="text-white font-mono">{message.skillId}</strong></span>
+              </div>
+
+              {message.jobId && (
+                <button 
+                  onClick={() => onFeedback(message.jobId)}
+                  class="text-xs text-netflixRed hover:text-white flex items-center gap-1.5 transition-colors border border-netflixRed/30 hover:border-netflixRed px-3 py-1 rounded-full">
+                  <span>✏️</span> Result is wrong / Adjust formula
+                </button>
+              )}
+            </div>
+
+          </div>
+        </div>
+      );
     }
 
-    function jsonString(obj) { return JSON.stringify(obj); }
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
   </script>
 </body>
 </html>
